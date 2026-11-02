@@ -1,0 +1,111 @@
+{
+  "model": "LightGBM regression on log1p(Sales)",
+  "target": "Sales per store per day",
+  "train_dates": [
+    "2013-01-01",
+    "2015-06-19"
+  ],
+  "validation_dates": [
+    "2015-06-20",
+    "2015-07-31"
+  ],
+  "train_rows": 804056,
+  "validation_rows": 46830,
+  "validation": {
+    "mae": 518.27,
+    "rmse": 813.76,
+    "rmspe": 0.12658,
+    "wape": 0.08634
+  },
+  "baseline": {
+    "mae": 639.99,
+    "rmse": 1028.21,
+    "rmspe": 0.14678,
+    "wape": 0.10661
+  },
+  "features": [
+    "Store",
+    "DayOfWeek",
+    "Promo",
+    "SchoolHoliday",
+    "StateHoliday",
+    "StoreType",
+    "Assortment",
+    "CompetitionDistance",
+    "CompetitionMissing",
+    "CompetitionOpenMonths",
+    "Promo2",
+    "Promo2Active",
+    "Promo2MonthActive",
+    "Month",
+    "Day",
+    "Year",
+    "WeekOfYear",
+    "DayOfYear",
+    "Quarter",
+    "IsWeekend",
+    "IsMonthStart",
+    "IsMonthEnd",
+    "MonthSin",
+    "MonthCos",
+    "DayOfYearSin",
+    "DayOfYearCos",
+    "Promo2WeeksElapsed"
+  ],
+  "important_features": [
+    {
+      "feature": "Store",
+      "importance": 7740
+    },
+    {
+      "feature": "DayOfWeek",
+      "importance": 1467
+    },
+    {
+      "feature": "DayOfYear",
+      "importance": 877
+    },
+    {
+      "feature": "Day",
+      "importance": 747
+    },
+    {
+      "feature": "DayOfYearSin",
+      "importance": 685
+    },
+    {
+      "feature": "DayOfYearCos",
+      "importance": 643
+    },
+    {
+      "feature": "CompetitionDistance",
+      "importance": 511
+    },
+    {
+      "feature": "Promo",
+      "importance": 445
+    },
+    {
+      "feature": "Year",
+      "importance": 393
+    },
+    {
+      "feature": "CompetitionOpenMonths",
+      "importance": 301
+    },
+    {
+      "feature": "WeekOfYear",
+      "importance": 263
+    },
+    {
+      "feature": "StoreType",
+      "importance": 254
+    }
+  ],
+  "notes": [
+    "42-day chronological holdout; no random split.",
+    "Sales and Customers are explicitly excluded from input features.",
+    "Closed stores yield 0 by business rule; missing test Open is estimated.",
+    "The validation model was trained only on dates before the validation interval."
+  ]
+}

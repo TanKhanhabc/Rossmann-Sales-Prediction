@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+node_modules/
+dist/
+.env
+*.log
+.DS_Store
+# Dataset and generated assets provided in downloadable ZIP; avoid pushing big CSV to Git without explicit intent
+# data/raw/*.csv
