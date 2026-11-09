@@ -29,12 +29,12 @@ def get_stores() -> pd.DataFrame:
 
 @lru_cache(maxsize=1)
 def get_train() -> pd.DataFrame:
-    return pd.read_csv(require_csv("train.csv"), parse_dates=["Date"], low_memory=False)
+    return pd.read_csv(require_csv("train_merged.csv"), parse_dates=["Date"], low_memory=False)
 
 
 @lru_cache(maxsize=1)
 def get_test() -> pd.DataFrame:
-    return pd.read_csv(require_csv("test.csv"), parse_dates=["Date"], low_memory=False)
+    return pd.read_csv(require_csv("test_merged.csv"), parse_dates=["Date"], low_memory=False)
 
 
 @lru_cache(maxsize=1)
@@ -70,9 +70,12 @@ def get_history(store: int | None = None, days: int = 45) -> list[dict]:
     df = get_train()
     if store is not None:
         df = df[df.Store.eq(store)]
-    daily = df.groupby("Date", sort=True).agg(sales=("Sales", "sum"), customers=("Customers", "sum"))
+    daily = df.groupby("Date", sort=True).agg(sales=("Sales", "sum"))
+    if "Customers" in df:
+        daily["customers"] = df.groupby("Date", sort=True)["Customers"].sum()
     daily = daily.tail(days)
-    return [{"date": idx.date().isoformat(), "sales": int(row.sales), "customers": int(row.customers)}
+    return [{"date": idx.date().isoformat(), "sales": int(row.sales),
+             "customers": int(row.customers) if "customers" in daily else None}
             for idx, row in daily.iterrows()]
 
 
@@ -84,7 +87,7 @@ def data_profile() -> dict:
                  "missing_open_original": get_preprocessing_report()["missing_test_open_original"]},
         "store": {"rows": len(get_stores()), "columns": list(get_stores().columns),
                   "missing": {k: int(v) for k, v in get_stores().isna().sum().items() if v}},
-        "notes": ["Customers and Sales only exist in train.csv, never prediction features.",
+        "notes": ["Sales only exists in train data and is never a prediction feature.",
                   "Missing test Open values are estimated from day of week during data preparation.",
                   "Missing CompetitionDistance values are represented by -1 and flagged.",
                   "All dates are historical (2013–2015); not a live feed."],

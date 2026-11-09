@@ -77,9 +77,15 @@ def prepare_data(
     test["Open"] = test["Open"].fillna(test["DayOfWeek"].ne(7).astype(int)).astype("int8")
     stores = _clean_stores(stores)
 
+    # Keep Customers for historical analytics; model features explicitly exclude it.
+    train_merged = train.merge(stores, on="Store", how="left", validate="many_to_one", sort=False)
+    test_merged = test.merge(stores, on="Store", how="left", validate="many_to_one", sort=False)
+
     processed_dir.mkdir(parents=True, exist_ok=True)
     train.to_csv(processed_dir / "train.csv", index=False)
+    train_merged.to_csv(processed_dir / "train_merged.csv", index=False)
     test.to_csv(processed_dir / "test.csv", index=False)
+    test_merged.to_csv(processed_dir / "test_merged.csv", index=False)
     stores.to_csv(processed_dir / "store.csv", index=False)
     report = {
         "train_rows": len(train),

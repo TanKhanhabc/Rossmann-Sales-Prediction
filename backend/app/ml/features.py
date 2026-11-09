@@ -28,9 +28,9 @@ def make_features(schedule: pd.DataFrame, stores: pd.DataFrame) -> pd.DataFrame:
     df = schedule.copy()
     df["Date"] = pd.to_datetime(df["Date"], errors="raise")
     store_fields = [c for c in stores.columns if c != "Store"]
-    # Drop stale store columns if caller passed an already-joined dataset.
-    df = df.drop(columns=[x for x in store_fields if x in df.columns], errors="ignore")
-    df = df.merge(stores, on="Store", how="left", validate="many_to_one", sort=False)
+    if not set(store_fields).issubset(df.columns):
+        df = df.drop(columns=[x for x in store_fields if x in df.columns], errors="ignore")
+        df = df.merge(stores, on="Store", how="left", validate="many_to_one", sort=False)
     if df["StoreType"].isna().any():
         raise ValueError("Some Store IDs do not exist in store.csv")
     dt = df["Date"].dt

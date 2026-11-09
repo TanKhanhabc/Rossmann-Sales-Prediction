@@ -29,10 +29,17 @@ def test_prepare_data_cleans_inputs_without_modifying_raw_files(tmp_path):
     report = prepare_data(raw_dir, processed_dir)
 
     prepared_test = pd.read_csv(processed_dir / "test.csv", dtype={"StateHoliday": str})
+    prepared_train = pd.read_csv(processed_dir / "train.csv")
     prepared_store = pd.read_csv(processed_dir / "store.csv", keep_default_na=False)
+    prepared_train_merged = pd.read_csv(processed_dir / "train_merged.csv")
+    prepared_test_merged = pd.read_csv(processed_dir / "test_merged.csv")
     assert prepared_test["Open"].tolist() == [1, 0]
     assert prepared_test["Promo"].tolist() == [0, 0]
     assert prepared_test["StateHoliday"].tolist() == ["0", "0"]
+    assert prepared_train["Customers"].tolist() == [1]
+    assert prepared_train_merged["Customers"].tolist() == [1]
+    assert "StoreType" in prepared_train_merged.columns
+    assert "StoreType" in prepared_test_merged.columns
     assert prepared_store.loc[0, "CompetitionDistance"] == -1
     assert prepared_store.loc[0, "CompetitionMissing"] == 1
     assert prepared_store.loc[0, "Promo2"] == 0

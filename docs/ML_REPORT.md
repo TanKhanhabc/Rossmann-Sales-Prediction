@@ -4,14 +4,14 @@
 Dự đoán `Sales` theo `Store + Date`. Dataset gốc có **1.017.209** bản ghi lịch sử và **41.088** bản ghi test không có nhãn.
 
 ## Pipeline
-1. Đọc `train.csv`, `store.csv`; nối theo `Store` (`many_to_one`).
+1. Đọc `train_merged.csv` để huấn luyện; file này đã nối các đặc trưng cửa hàng theo `Store` (`many_to_one`).
 2. Tạo đặc trưng thời gian, khuyến mãi, ngày lễ, cửa hàng, cạnh tranh.
 3. Không sử dụng `Customers` hoặc `Sales` trong features (tránh target leakage / inference mismatch).
 4. **42 ngày cuối lịch sử** làm validation; chỉ huấn luyện trước thời điểm validation.
 5. Fit LightGBM trên `log1p(Sales)` khi cửa hàng mở và doanh thu dương; clamp dự đoán về ≥0, ép 0 khi đóng.
 6. So với baseline trung bình nhóm (`Store`, `DayOfWeek`, `Promo`) dựa trên lịch sử **trước** validation.
 7. Đánh giá MAE, RMSE, RMSPE (loại Sales=0), WAPE. Sau đó fit lại trên toàn bộ lịch sử và lưu `models/rossmann_sales_lgbm.joblib`.
-8. Dự đoán `test.csv` và xuất `results/submission.csv` với đúng Id.
+8. Đọc `test_merged.csv` để dự đoán và xuất `results/submission.csv` với đúng Id.
 
 ## Lưu ý
 - MAE/RMSE phải đọc từ `results/evaluation_metrics.json` sau khi chạy train, không điền đoán.
