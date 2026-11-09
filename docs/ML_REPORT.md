@@ -4,8 +4,8 @@
 Dự đoán `Sales` theo `Store + Date`. Dataset gốc có **1.017.209** bản ghi lịch sử và **41.088** bản ghi test không có nhãn.
 
 ## Pipeline
-1. Đọc `train_merged.csv` để huấn luyện; file này đã nối các đặc trưng cửa hàng theo `Store` (`many_to_one`).
-2. Tạo đặc trưng thời gian, khuyến mãi, ngày lễ, cửa hàng, cạnh tranh.
+1. Đọc `train_merged.csv` để huấn luyện; file này đã nối các đặc trưng cửa hàng theo `Store` và thời tiết theo bang/ngày (`many_to_one`).
+2. Tạo đặc trưng thời gian, khuyến mãi, ngày lễ, cửa hàng, cạnh tranh và thời tiết.
 3. Không sử dụng `Customers` hoặc `Sales` trong features (tránh target leakage / inference mismatch).
 4. **42 ngày cuối lịch sử** làm validation; chỉ huấn luyện trước thời điểm validation.
 5. Fit LightGBM trên `log1p(Sales)` khi cửa hàng mở và doanh thu dương; clamp dự đoán về ≥0, ép 0 khi đóng.
@@ -18,5 +18,7 @@ Dự đoán `Sales` theo `Store + Date`. Dataset gốc có **1.017.209** bản g
 - `Open` trong test thiếu 11 bản ghi tại Store 622, điền 0 nếu Chủ nhật, khác điền 1: **giả định**.
 - Với Open=1, Sales=0 có 54 ngoại lệ lịch sử; không fit 54 hàng này, nhưng vẫn tính điểm nếu có trong holdout.
 - Các đặc trưng lịch giả định cho các ngày ngoài test có thể sai với thực tế; không gọi đây là lịch promo tương lai chắc chắn.
+- Thời tiết lịch sử được nối từ `data/external/` sau khi làm sạch; ngày không có quan sát thời tiết dùng trung vị lịch sử của bang, không phải dự báo thời tiết.
+- Metric validation dùng quan sát thời tiết thực tế trong CSV cho giai đoạn holdout; do đó có thể lạc quan hơn dự báo thực hiện trước khi biết thời tiết.
 - Cách tính tuần Promo2 từ năm ISO gần đúng, không xử lý hoàn hảo năm 53 tuần.
 - **Không có kết quả thử nghiệm trên hidden Kaggle test** cho tới khi người dùng nộp CSV hợp lệ.

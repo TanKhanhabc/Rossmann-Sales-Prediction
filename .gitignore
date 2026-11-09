@@ -9,3 +9,5 @@ dist/
 .DS_Store
 # Dataset and generated assets provided in downloadable ZIP; avoid pushing big CSV to Git without explicit intent
 # data/raw/*.csv
+
+data/merged/*.csv

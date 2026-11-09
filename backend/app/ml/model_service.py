@@ -7,8 +7,10 @@ import numpy as np
 import pandas as pd
 from lightgbm import LGBMRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error
-from app.ml.features import FEATURES, CATEGORICAL, make_features
-from app.services.data_service import MODEL_FILE, METRICS_FILE, get_stores, get_train
+from app.ml.features import FEATURES, CATEGORICAL, WEATHER_FEATURES, make_features
+from app.services.data_service import (
+    MODEL_FILE, METRICS_FILE, get_stores, get_train, get_weather,
+)
 
 
 def build_model(n_estimators: int = 420) -> LGBMRegressor:
@@ -33,7 +35,8 @@ def score(y: np.ndarray, pred: np.ndarray) -> dict:
 
 
 def predict_frame(model: LGBMRegressor, df: pd.DataFrame, store_df: pd.DataFrame) -> np.ndarray:
-    feats = make_features(df, store_df)
+    weather = None if set(WEATHER_FEATURES).issubset(df.columns) else get_weather()
+    feats = make_features(df, store_df, weather)
     guess = np.expm1(model.predict(feats))
     open_flag = df["Open"].fillna(1).astype(int).eq(1).to_numpy() if "Open" in df else np.ones(len(df), dtype=bool)
     return np.where(open_flag, np.maximum(0, guess), 0.0)
@@ -74,7 +77,8 @@ def train_and_evaluate(validation_days: int = 42, n_estimators: int = 420) -> di
         "notes": ["42-day chronological holdout; no random split.",
                   "Sales and Customers are explicitly excluded from input features.",
                   "Closed stores yield 0 by business rule; missing test Open is estimated.",
-                  "The validation model was trained only on dates before the validation interval."],
+                  "The validation model was trained only on dates before the validation interval.",
+                  "Validation uses observed weather from the supplied data; metrics may overstate forecasts made before weather is known."],
     }
     print("[TRAIN] Validation:", json.dumps(metrics["validation"]),flush=True)
     print("[TRAIN] Baseline:", json.dumps(metrics["baseline"]),flush=True)

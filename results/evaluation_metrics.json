@@ -12,10 +12,10 @@
   "train_rows": 804056,
   "validation_rows": 46830,
   "validation": {
-    "mae": 518.27,
-    "rmse": 813.76,
-    "rmspe": 0.12658,
-    "wape": 0.08634
+    "mae": 509.82,
+    "rmse": 811.59,
+    "rmspe": 0.12134,
+    "wape": 0.08493
   },
   "baseline": {
     "mae": 639.99,
@@ -50,62 +50,91 @@
     "MonthCos",
     "DayOfYearSin",
     "DayOfYearCos",
-    "Promo2WeeksElapsed"
+    "Promo2WeeksElapsed",
+    "Max_TemperatureC",
+    "Mean_TemperatureC",
+    "Min_TemperatureC",
+    "Dew_PointC",
+    "MeanDew_PointC",
+    "Min_DewpointC",
+    "Max_Humidity",
+    "Mean_Humidity",
+    "Min_Humidity",
+    "Max_Sea_Level_PressurehPa",
+    "Mean_Sea_Level_PressurehPa",
+    "Min_Sea_Level_PressurehPa",
+    "Max_VisibilityKm",
+    "Mean_VisibilityKm",
+    "Min_VisibilitykM",
+    "Max_Wind_SpeedKm_h",
+    "Mean_Wind_SpeedKm_h",
+    "Max_Gust_SpeedKm_h",
+    "Precipitationmm",
+    "CloudCover",
+    "WindDirSin",
+    "WindDirCos",
+    "WeatherMissingCount",
+    "WeatherRain",
+    "WeatherSnow",
+    "WeatherFog",
+    "WeatherHail",
+    "WeatherThunderstorm"
   ],
   "important_features": [
     {
       "feature": "Store",
-      "importance": 7740
+      "importance": 7396
     },
     {
       "feature": "DayOfWeek",
-      "importance": 1467
+      "importance": 1086
     },
     {
       "feature": "DayOfYear",
-      "importance": 877
+      "importance": 602
     },
     {
       "feature": "Day",
-      "importance": 747
+      "importance": 581
     },
     {
       "feature": "DayOfYearSin",
-      "importance": 685
+      "importance": 475
     },
     {
       "feature": "DayOfYearCos",
-      "importance": 643
+      "importance": 430
     },
     {
       "feature": "CompetitionDistance",
-      "importance": 511
+      "importance": 395
     },
     {
       "feature": "Promo",
-      "importance": 445
+      "importance": 379
+    },
+    {
+      "feature": "Max_TemperatureC",
+      "importance": 238
     },
     {
       "feature": "Year",
-      "importance": 393
-    },
-    {
-      "feature": "CompetitionOpenMonths",
-      "importance": 301
-    },
-    {
-      "feature": "WeekOfYear",
-      "importance": 263
+      "importance": 220
     },
     {
       "feature": "StoreType",
-      "importance": 254
+      "importance": 203
+    },
+    {
+      "feature": "WindDirSin",
+      "importance": 190
     }
   ],
   "notes": [
     "42-day chronological holdout; no random split.",
     "Sales and Customers are explicitly excluded from input features.",
     "Closed stores yield 0 by business rule; missing test Open is estimated.",
-    "The validation model was trained only on dates before the validation interval."
+    "The validation model was trained only on dates before the validation interval.",
+    "Validation uses observed weather from the supplied data; metrics may overstate forecasts made before weather is known."
   ]
 }

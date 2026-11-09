@@ -7,13 +7,15 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[3]
 PROCESSED_DIR = ROOT / "data" / "processed"
+EXTERNAL_PROCESSED_DIR = PROCESSED_DIR / "external"
+MERGED_DIR = ROOT / "data" / "merged"
 MODEL_FILE = ROOT / "models" / "rossmann_sales_lgbm.joblib"
 METRICS_FILE = ROOT / "results" / "evaluation_metrics.json"
 SUBMISSION_FILE = ROOT / "results" / "submission.csv"
 
 
-def require_csv(name: str) -> Path:
-    path = PROCESSED_DIR / name
+def require_csv(name: str, directory: Path = PROCESSED_DIR) -> Path:
+    path = directory / name
     if not path.is_file():
         raise FileNotFoundError(
             f"Missing prepared dataset: {path}. "
@@ -28,13 +30,26 @@ def get_stores() -> pd.DataFrame:
 
 
 @lru_cache(maxsize=1)
+def get_weather() -> pd.DataFrame:
+    return pd.read_csv(
+        require_csv("weather.csv", EXTERNAL_PROCESSED_DIR),
+        parse_dates=["Date"],
+        low_memory=False,
+    )
+
+
+@lru_cache(maxsize=1)
 def get_train() -> pd.DataFrame:
-    return pd.read_csv(require_csv("train_merged.csv"), parse_dates=["Date"], low_memory=False)
+    return pd.read_csv(
+        require_csv("train_merged.csv", MERGED_DIR), parse_dates=["Date"], low_memory=False
+    )
 
 
 @lru_cache(maxsize=1)
 def get_test() -> pd.DataFrame:
-    return pd.read_csv(require_csv("test_merged.csv"), parse_dates=["Date"], low_memory=False)
+    return pd.read_csv(
+        require_csv("test_merged.csv", MERGED_DIR), parse_dates=["Date"], low_memory=False
+    )
 
 
 @lru_cache(maxsize=1)
@@ -87,8 +102,11 @@ def data_profile() -> dict:
                  "missing_open_original": get_preprocessing_report()["missing_test_open_original"]},
         "store": {"rows": len(get_stores()), "columns": list(get_stores().columns),
                   "missing": {k: int(v) for k, v in get_stores().isna().sum().items() if v}},
+        "weather": {"rows": len(get_weather()), "columns": list(get_weather().columns),
+                    "imputed_measurements": int(get_weather()["WeatherMissingCount"].sum())},
         "notes": ["Sales only exists in train data and is never a prediction feature.",
                   "Missing test Open values are estimated from day of week during data preparation.",
                   "Missing CompetitionDistance values are represented by -1 and flagged.",
+                  "Weather observations are mapped by store state and date; unknown dates use historical state medians.",
                   "All dates are historical (2013–2015); not a live feed."],
     }
