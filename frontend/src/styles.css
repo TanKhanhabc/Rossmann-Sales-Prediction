@@ -202,6 +202,7 @@ h1 { margin-bottom: 7px; color: #21364a; font-family: Manrope, sans-serif; font-
 .chart-key { display: flex; align-items: center; gap: 7px; color: #82949e; font-size: 11px; }
 .chart-key span { width: 8px; height: 8px; background: #1fbc99; border-radius: 50%; }
 .chart-area { width: 100%; height: 235px; margin-top: 14px; }
+.chart-empty { display: grid; min-height: 235px; margin-top: 14px; place-items: center; padding: 20px; color: #82949e; text-align: center; font-size: 13px; }
 .chart-tooltip { padding: 11px 14px; color: #82929d; background: #fff; border: 1px solid #e6edf0; border-radius: 10px; box-shadow: 0 4px 22px rgba(37,50,72,.16); font-size: 12px; }
 .chart-tooltip div { padding-top: 6px; }
 .chart-tooltip strong { font-size: 15px; }

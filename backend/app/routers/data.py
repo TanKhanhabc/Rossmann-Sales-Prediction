@@ -1,4 +1,5 @@
 from __future__ import annotations
+from datetime import date
 import json
 from fastapi import APIRouter, HTTPException, Query
 from app.services.data_service import get_stores, overview, get_history, data_profile, METRICS_FILE
@@ -26,10 +27,14 @@ def stores():
 
 
 @router.get("/history")
-def history(store: int | None = None, days: int = Query(45, ge=1, le=365)):
+def history(
+    store: int | None = None,
+    days: int = Query(45, ge=1, le=365),
+    start_date: date | None = None,
+):
     if store is not None and store not in set(get_stores().Store):
         raise HTTPException(status_code=404, detail="Không tìm thấy cửa hàng")
-    return {"store": store, "days": days, "points": get_history(store, days)}
+    return {"store": store, "days": days, "points": get_history(store, days, start_date)}
 
 
 @router.get("/data-profile")

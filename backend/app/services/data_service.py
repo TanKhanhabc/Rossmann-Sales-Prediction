@@ -1,5 +1,6 @@
 """Centralized access to datasets prepared by scripts/preprocessing/prepare_data.py."""
 from __future__ import annotations
+from datetime import date, timedelta
 from functools import lru_cache
 from pathlib import Path
 import json
@@ -86,14 +87,26 @@ def overview() -> dict:
     }
 
 
-def get_history(store: int | None = None, days: int = 45) -> list[dict]:
+def get_history(
+    store: int | None = None,
+    days: int = 45,
+    before_date: date | None = None,
+) -> list[dict]:
     df = get_train()
     if store is not None:
         df = df[df.Store.eq(store)]
+    if df.empty:
+        return []
+    end_date = (
+        before_date
+        if before_date is not None
+        else pd.Timestamp(df.Date.max()).date() + timedelta(days=1)
+    )
+    start_date = end_date - timedelta(days=days)
+    df = df[df.Date.ge(pd.Timestamp(start_date)) & df.Date.lt(pd.Timestamp(end_date))]
     daily = df.groupby("Date", sort=True).agg(sales=("Sales", "sum"))
     if "Customers" in df:
         daily["customers"] = df.groupby("Date", sort=True)["Customers"].sum()
-    daily = daily.tail(days)
     return [{"date": idx.date().isoformat(), "sales": int(row.sales),
              "customers": int(row.customers) if "customers" in daily else None}
             for idx, row in daily.iterrows()]

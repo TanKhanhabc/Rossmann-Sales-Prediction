@@ -5,6 +5,8 @@ import pandas as pd
 from fastapi.testclient import TestClient
 from app.main import app
 from app.routers import predictions
+from app.routers import data
+from app.services import data_service
 from app.services.data_service import MODEL_FILE
 
 client = TestClient(app)
@@ -21,6 +23,43 @@ def test_health_overview_and_stores():
 def test_history_and_invalid_store():
     assert len(client.get("/api/history?store=1&days=5").json()["points"]) == 5
     assert client.get("/api/history?store=99999").status_code == 404
+
+
+def test_history_uses_store_and_exact_previous_date_window(monkeypatch):
+    rows = pd.DataFrame([
+        {"Store": 1, "Date": pd.Timestamp("2015-07-30"), "Sales": 300, "Customers": 3},
+        {"Store": 1, "Date": pd.Timestamp("2015-07-31"), "Sales": 310, "Customers": 4},
+        {"Store": 1, "Date": pd.Timestamp("2015-08-01"), "Sales": 320, "Customers": 5},
+        {"Store": 1, "Date": pd.Timestamp("2015-08-02"), "Sales": 330, "Customers": 6},
+        {"Store": 1, "Date": pd.Timestamp("2015-08-03"), "Sales": 340, "Customers": 7},
+        {"Store": 2, "Date": pd.Timestamp("2015-08-01"), "Sales": 900, "Customers": 9},
+    ])
+    monkeypatch.setattr(data_service, "get_train", lambda: rows)
+
+    points = data_service.get_history(1, 3, date(2015, 8, 3))
+
+    assert points == [
+        {"date": "2015-07-31", "sales": 310, "customers": 4},
+        {"date": "2015-08-01", "sales": 320, "customers": 5},
+        {"date": "2015-08-02", "sales": 330, "customers": 6},
+    ]
+    assert data_service.get_history(1, 3, date(2015, 8, 7)) == []
+
+
+def test_history_endpoint_passes_start_date_and_days(monkeypatch):
+    received = {}
+
+    def fake_history(store, days, start_date):
+        received.update(store=store, days=days, start_date=start_date)
+        return []
+
+    monkeypatch.setattr(data, "get_history", fake_history)
+
+    response = client.get("/api/history?store=1&start_date=2015-08-03&days=7")
+
+    assert response.status_code == 200
+    assert response.json() == {"store": 1, "days": 7, "points": []}
+    assert received == {"store": 1, "days": 7, "start_date": date(2015, 8, 3)}
 
 
 def test_predict_and_closed():

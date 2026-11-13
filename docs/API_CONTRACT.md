@@ -7,7 +7,7 @@ Swagger: `http://127.0.0.1:8000/docs`
 | GET | `/api/health` | Kiểm tra |
 | GET | `/api/overview` | KPI toàn bộ lịch sử |
 | GET | `/api/stores` | Danh sách 1115 cửa hàng |
-| GET | `/api/history?store=1&days=45` | Doanh thu lịch sử |
+| GET | `/api/history?store=1&start_date=2015-08-01&days=14` | Doanh thu thực tế của cửa hàng trong khoảng ngày trước ngày bắt đầu dự báo |
 | GET | `/api/data-profile` | Cột, missing, cảnh báo |
 | GET | `/api/model-info` | Metrics từ holdout thực |
 | POST | `/api/predict` | Dự đoán 1 cửa hàng 1 ngày |
@@ -26,3 +26,5 @@ Response:
 Con số 5500.0 ở trên chỉ minh họa dạng dữ liệu, không phải kết quả đo.
 
 `/api/forecast`: nếu ngày và cửa hàng có trong test.csv thì lấy Promo, Open, StateHoliday và SchoolHoliday thật từ **lịch test**. Nếu không, API ước tính `Open = 0` vào Chủ nhật và `Promo/SchoolHoliday/StateHoliday` theo giả định do user truyền; Response nêu `schedule_source` cho từng ngày. Đây là **dự đoán theo kịch bản**, không phải lịch khuyến mãi tương lai được xác minh.
+
+`/api/history`: với `start_date` và `days`, trả về doanh thu lịch sử thật của cửa hàng được chọn từ `start_date - days` đến trước `start_date`. Nếu bỏ `start_date`, API trả khoảng `days` ngày kết thúc tại ngày mới nhất trong dữ liệu huấn luyện.

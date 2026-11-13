@@ -15,7 +15,7 @@ export type PredictResult = {store:number;date:string;predicted_sales:number;ope
 export const api = {
   summary: () => request<Summary>('/overview'),
   stores: () => request<Store[]>('/stores'),
-  history: (store?: number, days = 45) => request<{points: Point[]}>(`/history?days=${days}${store ? `&store=${store}` : ''}`),
+  history: (store: number, startDate: string, days: number) => request<{points: Point[]}>(`/history?store=${store}&start_date=${startDate}&days=${days}`),
   model: () => request<Model>('/model-info'),
   forecast: (store: number, startDate: string, days: number) => request<Forecast>(`/forecast?store=${store}&start_date=${startDate}&days=${days}`),
   predict: (data: PredictInput) => request<PredictResult>('/predict', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)}),
