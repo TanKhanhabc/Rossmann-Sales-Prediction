@@ -1,7 +1,7 @@
 # Phân chia module 
 
-- Data/EDA: `backend/app/services/data_service.py`, `scripts/data/prepare_data.py`, `scripts/analysis/run_eda.py`, `data/raw/`, `docs/DATA_DICTIONARY.md`.
-- ML/Evaluation: `backend/app/ml/`, `scripts/analysis/run_evaluation.py`, `results/`, `models/`.
+- Data/EDA: `backend/app/services/data_service.py`, `scripts/preprocessing/prepare_data.py`, `scripts/analysis/run_eda.py`, `data/raw/`, `docs/DATA_DICTIONARY.md`.
+- ML/Evaluation: `backend/app/model/`, `scripts/evaluation/run_evaluation.py`, `results/`, `models/`.
 - API: `backend/app/routers/`, `backend/app/main.py`, `backend/tests/`.
 - UI: `frontend/src/` (React TypeScript, Recharts).
 - DevOps: Dockerfiles, docker-compose, README.

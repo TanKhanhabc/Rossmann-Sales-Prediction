@@ -1,15 +1,21 @@
-"""Training, evaluation, persistence, inference."""
+"""Train, evaluate, and persist the sales forecasting model."""
 from __future__ import annotations
+
 import json
-from functools import lru_cache
+
 import joblib
 import numpy as np
 import pandas as pd
 from lightgbm import LGBMRegressor
-from sklearn.metrics import mean_absolute_error, mean_squared_error
-from app.ml.features import FEATURES, CATEGORICAL, WEATHER_FEATURES, make_features
+
+from app.model.evaluate_model import score
+from app.model.features import CATEGORICAL, FEATURES, make_features
+from app.model.predict_model import load_model, predict_frame
 from app.services.data_service import (
-    MODEL_FILE, METRICS_FILE, get_stores, get_train, get_weather,
+    METRICS_FILE,
+    MODEL_FILE,
+    get_stores,
+    get_train,
 )
 
 
@@ -20,26 +26,6 @@ def build_model(n_estimators: int = 420) -> LGBMRegressor:
         colsample_bytree=0.90, subsample=0.90, subsample_freq=1,
         random_state=42, n_jobs=4, verbosity=-1,
     )
-
-
-def score(y: np.ndarray, pred: np.ndarray) -> dict:
-    actual = np.asarray(y, dtype=float)
-    guess = np.asarray(pred, dtype=float)
-    nonzero = actual > 0
-    return {
-        "mae": round(float(mean_absolute_error(actual, guess)), 2),
-        "rmse": round(float(np.sqrt(mean_squared_error(actual, guess))), 2),
-        "rmspe": round(float(np.sqrt(np.mean(((actual[nonzero] - guess[nonzero]) / actual[nonzero]) ** 2))), 5) if nonzero.any() else None,
-        "wape": round(float(np.abs(actual - guess).sum() / actual.sum()), 5) if actual.sum() else None,
-    }
-
-
-def predict_frame(model: LGBMRegressor, df: pd.DataFrame, store_df: pd.DataFrame) -> np.ndarray:
-    weather = None if set(WEATHER_FEATURES).issubset(df.columns) else get_weather()
-    feats = make_features(df, store_df, weather)
-    guess = np.expm1(model.predict(feats))
-    open_flag = df["Open"].fillna(1).astype(int).eq(1).to_numpy() if "Open" in df else np.ones(len(df), dtype=bool)
-    return np.where(open_flag, np.maximum(0, guess), 0.0)
 
 
 def train_and_evaluate(validation_days: int = 42, n_estimators: int = 420) -> dict:
@@ -80,11 +66,11 @@ def train_and_evaluate(validation_days: int = 42, n_estimators: int = 420) -> di
                   "The validation model was trained only on dates before the validation interval.",
                   "Validation uses observed weather from the supplied data; metrics may overstate forecasts made before weather is known."],
     }
-    print("[TRAIN] Validation:", json.dumps(metrics["validation"]),flush=True)
-    print("[TRAIN] Baseline:", json.dumps(metrics["baseline"]),flush=True)
+    print("[TRAIN] Validation:", json.dumps(metrics["validation"]), flush=True)
+    print("[TRAIN] Baseline:", json.dumps(metrics["baseline"]), flush=True)
     # Train production model on ALL historical positive open rows.
     full_fit = raw.loc[raw.Open.eq(1) & raw.Sales.gt(0)]
-    print(f"[TRAIN] Full model: {len(full_fit):,} rows...",flush=True)
+    print(f"[TRAIN] Full model: {len(full_fit):,} rows...", flush=True)
     production = build_model(n_estimators)
     production.fit(make_features(full_fit, stores), np.log1p(full_fit.Sales), categorical_feature=CATEGORICAL)
     MODEL_FILE.parent.mkdir(parents=True, exist_ok=True)
@@ -96,13 +82,5 @@ def train_and_evaluate(validation_days: int = 42, n_estimators: int = 420) -> di
     print("[TRAIN] Saved model to", MODEL_FILE, flush=True)
     return metrics
 
-
-@lru_cache(maxsize=1)
-def load_model() -> dict:
-    if not MODEL_FILE.exists():
-        raise FileNotFoundError("Chưa có mô hình. Hãy chạy: python scripts/analysis/run_evaluation.py")
-    return joblib.load(MODEL_FILE)
-
-
-def infer(df: pd.DataFrame) -> np.ndarray:
-    return predict_frame(load_model()["model"], df, get_stores())
+if __name__ == "__main__":
+    train_and_evaluate()

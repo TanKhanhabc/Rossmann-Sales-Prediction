@@ -1,5 +1,10 @@
+from datetime import date
+
+import numpy as np
+import pandas as pd
 from fastapi.testclient import TestClient
 from app.main import app
+from app.routers import predictions
 from app.services.data_service import MODEL_FILE
 
 client = TestClient(app)
@@ -29,3 +34,38 @@ def test_predict_and_closed():
     forecast = client.get("/api/forecast?store=1&start_date=2015-08-01&days=7")
     assert forecast.status_code == 200 and len(forecast.json()["points"]) == 7
     assert forecast.json()["known_schedule_days"] == 7
+
+
+def test_forecast_uses_test_schedule_for_matching_store_dates(monkeypatch):
+    schedule = pd.DataFrame([
+        {"Store": 1, "Date": pd.Timestamp("2015-08-01"), "Open": 1, "Promo": 0,
+         "StateHoliday": "0", "SchoolHoliday": 1},
+        {"Store": 1, "Date": pd.Timestamp("2015-08-03"), "Open": 0, "Promo": 1,
+         "StateHoliday": "a", "SchoolHoliday": 0},
+    ])
+    model_input = {}
+
+    def fake_infer(frame):
+        model_input["frame"] = frame
+        return np.ones(len(frame))
+
+    monkeypatch.setattr(predictions, "get_test_schedule", lambda: schedule)
+    monkeypatch.setattr(predictions, "infer", fake_infer)
+
+    result = predictions.forecast(
+        store=1, start_date=date(2015, 8, 1), days=4,
+        assumed_promo=1, assumed_school_holiday=1, assumed_state_holiday="b",
+    )
+
+    assert result["known_schedule_days"] == 2
+    assert result["assumed_schedule_days"] == 2
+    assert [point["schedule_source"] for point in result["points"]] == [
+        "test.csv", "assumption", "test.csv", "assumption",
+    ]
+    frame = model_input["frame"]
+    assert frame[["Promo", "Open", "StateHoliday", "SchoolHoliday"]].to_dict("records") == [
+        {"Promo": 0, "Open": 1, "StateHoliday": "0", "SchoolHoliday": 1},
+        {"Promo": 1, "Open": 0, "StateHoliday": "b", "SchoolHoliday": 1},
+        {"Promo": 1, "Open": 0, "StateHoliday": "a", "SchoolHoliday": 0},
+        {"Promo": 1, "Open": 1, "StateHoliday": "b", "SchoolHoliday": 1},
+    ]

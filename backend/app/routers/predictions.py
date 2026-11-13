@@ -7,8 +7,8 @@ import pandas as pd
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
-from app.ml.model_service import infer, load_model
-from app.services.data_service import SUBMISSION_FILE, get_stores, get_test
+from app.model.predict_model import infer
+from app.services.data_service import SUBMISSION_FILE, get_stores, get_test_schedule
 
 router = APIRouter(prefix="/api", tags=["Forecast & Prediction"])
 
@@ -69,7 +69,7 @@ def forecast(
     assumed_state_holiday: Literal["0", "a", "b", "c"] = "0",
 ):
     validate_store(store)
-    known = get_test()
+    known = get_test_schedule()
     target_dates = pd.date_range(start_date, periods=days, freq="D")
     window = known.loc[known.Store.eq(store) & known.Date.isin(target_dates)]
     schedule = {row.Date.date(): row for row in window.itertuples(index=False)}

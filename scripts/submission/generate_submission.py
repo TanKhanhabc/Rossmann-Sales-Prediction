@@ -4,7 +4,7 @@ from pathlib import Path
 import pandas as pd
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "backend"))
-from app.ml.model_service import infer
+from app.model.predict_model import infer
 from app.services.data_service import get_test, SUBMISSION_FILE
 
 if __name__ == "__main__":

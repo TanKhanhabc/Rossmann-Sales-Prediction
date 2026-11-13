@@ -21,7 +21,7 @@ RossmannSalesForecast/
 │   │   ├── main.py
 │   │   ├── routers/ (data.py, predictions.py)
 │   │   ├── services/ (data_service.py)
-│   │   └── ml/ (features.py, model_service.py, train_model.py, evaluate_model.py, predict_model.py)
+│   │   └── model/ (features.py, train_model.py, evaluate_model.py, predict_model.py)
 │   ├── tests/
 │   ├── requirements.txt
 │   └── Dockerfile
@@ -36,8 +36,9 @@ RossmannSalesForecast/
 ├── models/ (rossmann_sales_lgbm.joblib)
 ├── results/ (evaluation_metrics.json, submission.csv, EDA_REPORT.md, monthly_sales.csv)
 ├── scripts/
-│   ├── data/prepare_data.py
-│   ├── analysis/ (run_eda.py, run_evaluation.py)
+│   ├── preprocessing/prepare_data.py
+│   ├── analysis/run_eda.py
+│   ├── evaluation/run_evaluation.py
 │   └── submission/generate_submission.py
 ├── notebooks/ (exploratory/eda.ipynb, ML_Experiment.ipynb)
 ├── docs/ (DATA_DICTIONARY.md, ML_REPORT.md, API_CONTRACT.md, TEAM_ASSIGNMENT.md)
@@ -69,9 +70,9 @@ Hoặc chạy `./start_windows.ps1` khi PowerShell policy cho phép.
 ## 3. Train lại model / đánh giá / xuất Kaggle
 Ở thư mục gốc dự án (không đứng trong backend), chuẩn bị dữ liệu một lần sau khi thêm CSV vào `data/raw/`:
 ```powershell
-py scripts/data/prepare_data.py
+py scripts/preprocessing/prepare_data.py
 py scripts/analysis/run_eda.py
-py scripts/analysis/run_evaluation.py
+py scripts/evaluation/run_evaluation.py
 py scripts/submission/generate_submission.py
 py -m pytest backend/tests -q
 ```

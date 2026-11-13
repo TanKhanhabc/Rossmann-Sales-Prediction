@@ -1,6 +1,6 @@
 import pandas as pd
 
-from scripts.data.prepare_data import WEATHER_NUMERIC_COLUMNS, prepare_data
+from scripts.preprocessing.prepare_data import WEATHER_NUMERIC_COLUMNS, prepare_data
 
 
 def test_prepare_data_cleans_inputs_without_modifying_raw_files(tmp_path):

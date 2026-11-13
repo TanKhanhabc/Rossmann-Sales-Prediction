@@ -1,4 +1,4 @@
-"""Centralized access to datasets prepared by scripts/data/prepare_data.py."""
+"""Centralized access to datasets prepared by scripts/preprocessing/prepare_data.py."""
 from __future__ import annotations
 from functools import lru_cache
 from pathlib import Path
@@ -19,7 +19,7 @@ def require_csv(name: str, directory: Path = PROCESSED_DIR) -> Path:
     if not path.is_file():
         raise FileNotFoundError(
             f"Missing prepared dataset: {path}. "
-            "Run `python scripts/data/prepare_data.py` from the project root."
+            "Run `python scripts/preprocessing/prepare_data.py` from the project root."
         )
     return path
 
@@ -50,6 +50,11 @@ def get_test() -> pd.DataFrame:
     return pd.read_csv(
         require_csv("test_merged.csv", MERGED_DIR), parse_dates=["Date"], low_memory=False
     )
+
+
+@lru_cache(maxsize=1)
+def get_test_schedule() -> pd.DataFrame:
+    return pd.read_csv(require_csv("test.csv"), parse_dates=["Date"], low_memory=False)
 
 
 @lru_cache(maxsize=1)

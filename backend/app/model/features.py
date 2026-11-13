@@ -42,7 +42,7 @@ def _attach_weather(
     if set(WEATHER_FEATURES).issubset(schedule.columns):
         return schedule
     if "State" not in stores:
-        raise ValueError("store.csv is missing State; rerun scripts/data/prepare_data.py")
+        raise ValueError("store.csv is missing State; rerun scripts/preprocessing/prepare_data.py")
     if not {"State", "Date", *WEATHER_NUMERIC_COLUMNS, *WEATHER_FEATURES}.issubset(weather.columns):
         raise ValueError("Cleaned weather data is missing required columns")
 

@@ -40,5 +40,5 @@ def profile():
 @router.get("/model-info")
 def model_info():
     if not METRICS_FILE.exists():
-        return {"trained": False, "message": "Run python scripts/analysis/run_evaluation.py"}
+        return {"trained": False, "message": "Run python scripts/evaluation/run_evaluation.py"}
     return {"trained": True, **json.loads(METRICS_FILE.read_text(encoding="utf-8"))}

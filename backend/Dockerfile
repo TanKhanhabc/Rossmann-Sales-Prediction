@@ -5,7 +5,7 @@ RUN pip install --no-cache-dir -r backend/requirements.txt
 COPY backend/ backend/
 COPY data/ data/
 COPY scripts/ scripts/
-RUN python scripts/data/prepare_data.py
+RUN python scripts/preprocessing/prepare_data.py
 COPY models/ models/
 COPY results/ results/
 WORKDIR /workspace/backend

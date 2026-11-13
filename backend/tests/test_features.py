@@ -1,5 +1,5 @@
 import pandas as pd
-from app.ml.features import FEATURES, make_features
+from app.model.features import FEATURES, make_features
 from app.services.data_service import get_stores, get_train, get_weather
 
 
