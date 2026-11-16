@@ -62,6 +62,60 @@ def test_history_endpoint_passes_start_date_and_days(monkeypatch):
     assert received == {"store": 1, "days": 7, "start_date": date(2015, 8, 3)}
 
 
+def test_actual_sales_returns_only_train_rows_in_selected_range(monkeypatch):
+    rows = pd.DataFrame([
+        {"Store": 1, "Date": pd.Timestamp("2015-07-30"), "Sales": 300, "Customers": 3},
+        {"Store": 1, "Date": pd.Timestamp("2015-07-31"), "Sales": 310, "Customers": 4},
+        {"Store": 1, "Date": pd.Timestamp("2015-08-01"), "Sales": 320, "Customers": 5},
+        {"Store": 2, "Date": pd.Timestamp("2015-07-31"), "Sales": 900, "Customers": 9},
+    ])
+    stores = pd.DataFrame({"Store": [1, 2]})
+    monkeypatch.setattr(data_service, "get_train", lambda: rows)
+    monkeypatch.setattr(data_service, "get_stores", lambda: stores)
+    monkeypatch.setattr(data, "get_train", lambda: rows)
+    monkeypatch.setattr(data, "get_stores", lambda: stores)
+
+    response = client.get(
+        "/api/actual-sales?store=1&start_date=2015-07-31&end_date=2015-08-01"
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "store": 1,
+        "start_date": "2015-07-31",
+        "end_date": "2015-08-01",
+        "points": [
+            {"date": "2015-07-31", "sales": 310, "customers": 4},
+            {"date": "2015-08-01", "sales": 320, "customers": 5},
+        ],
+    }
+
+
+def test_actual_sales_rejects_dates_outside_train(monkeypatch):
+    rows = pd.DataFrame([
+        {"Store": 1, "Date": pd.Timestamp("2015-07-31"), "Sales": 310},
+        {"Store": 1, "Date": pd.Timestamp("2015-08-01"), "Sales": 320},
+    ])
+    monkeypatch.setattr(data_service, "get_train", lambda: rows)
+    monkeypatch.setattr(data_service, "get_stores", lambda: pd.DataFrame({"Store": [1]}))
+    monkeypatch.setattr(data, "get_train", lambda: rows)
+    monkeypatch.setattr(data, "get_stores", lambda: pd.DataFrame({"Store": [1]}))
+
+    response = client.get(
+        "/api/actual-sales?store=1&start_date=2015-07-30&end_date=2015-08-01"
+    )
+
+    assert response.status_code == 422
+
+
+def test_actual_sales_rejects_reversed_date_range():
+    response = client.get(
+        "/api/actual-sales?store=1&start_date=2015-08-02&end_date=2015-08-01"
+    )
+
+    assert response.status_code == 422
+
+
 def test_predict_and_closed():
     if not MODEL_FILE.exists():
         return

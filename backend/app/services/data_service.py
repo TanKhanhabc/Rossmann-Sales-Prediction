@@ -112,6 +112,26 @@ def get_history(
             for idx, row in daily.iterrows()]
 
 
+def get_actual_sales(store: int, start_date: date, end_date: date) -> list[dict]:
+    df = get_train()
+    df = df.loc[
+        df.Store.eq(store)
+        & df.Date.ge(pd.Timestamp(start_date))
+        & df.Date.le(pd.Timestamp(end_date))
+    ]
+    daily = df.groupby("Date", sort=True).agg(sales=("Sales", "sum"))
+    if "Customers" in df:
+        daily["customers"] = df.groupby("Date", sort=True)["Customers"].sum()
+    return [
+        {
+            "date": idx.date().isoformat(),
+            "sales": int(row.sales),
+            "customers": int(row.customers) if "customers" in daily else None,
+        }
+        for idx, row in daily.iterrows()
+    ]
+
+
 def data_profile() -> dict:
     return {
         "train": {"rows": len(get_train()), "columns": list(get_train().columns),
