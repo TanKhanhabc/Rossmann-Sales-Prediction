@@ -36,6 +36,8 @@ export default function App() {
  const [predicting,setPredicting] = useState(false);
  const [error,setError] = useState('');
  const [searchOpen,setSearchOpen] = useState(false);
+ const [predictionStoreOpen,setPredictionStoreOpen] = useState(false);
+ const [predictionStoreFilter,setPredictionStoreFilter] = useState('');
  useEffect(() => {
    Promise.all([api.summary(),api.stores(),api.model()]).then(([s, st, m]) => {setSummary(s);setStores(st);setModel(m);setActualStartDate(s.date_start);setActualEndDate(s.date_end);}).catch(e=>setError(e.message));
  },[]);
@@ -57,6 +59,10 @@ export default function App() {
  useEffect(() => {if(viewTab==='history' && actualPeriodValid) void refreshActual();},[refreshActual,viewTab,actualPeriodValid]);
  const selectedStore = stores.find(s=>s.store===store);
  const filteredStores = useMemo(()=>stores.filter(s=>String(s.store).includes(storeFilter)).slice(0,80),[stores,storeFilter]);
+ const filteredPredictionStores = useMemo(
+   ()=>stores.filter(s=>String(s.store).includes(predictionStoreFilter)).slice(0,80),
+   [stores,predictionStoreFilter]
+ );
  const forecastChartData = forecast?.points.map(p=>({date:shortDate(p.date), sales:p.predicted_sales, name:p.date}))??[];
  const actualChartData = actualSales?.points.map(p=>({date:shortDate(p.date),sales:p.sales,name:p.date}))??[];
  async function submitPrediction(e: FormEvent) {
@@ -100,7 +106,51 @@ export default function App() {
       <div className="chart-footnote"><ShieldCheck size={16}/><span>{forecast?.warning??'Đang đọc lịch khuyến mãi và dữ liệu cửa hàng...'}</span></div>
     </section>
     <div className="bottom-grid"><section className="panel" id="predict"><div className="panel-header"><div><div className="heading-top">WHAT-IF ANALYSIS</div><h2>Dự đoán theo kịch bản</h2><p>Thay đổi điều kiện để ước lượng doanh thu.</p></div><div className="panel-symbol"><Sparkles size={20}/></div></div>
-    <form className="prediction-form" onSubmit={submitPrediction}><div className="form-grid"><label>Mã cửa hàng<input type="number" min={1} max={1115} value={form.store} onChange={e=>setForm({...form,store:Number(e.target.value)})}/></label><label>Ngày dự báo<input type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})}/></label><label>Khuyến mãi<select value={form.promo} onChange={e=>setForm({...form,promo:Number(e.target.value)})}><option value={1}>Có khuyến mãi</option><option value={0}>Không</option></select></label><label>Trạng thái cửa hàng<select value={form.open} onChange={e=>setForm({...form,open:Number(e.target.value)})}><option value={1}>Mở cửa</option><option value={0}>Đóng cửa</option></select></label><label>Nghỉ học của trường học<select value={form.school_holiday} onChange={e=>setForm({...form,school_holiday:Number(e.target.value)})}><option value={0}>Không</option><option value={1}>Có</option></select></label><label>Ngày lễ<select value={form.state_holiday} onChange={e=>setForm({...form,state_holiday:e.target.value})}><option value="0">Ngày thường</option><option value="a">Lễ loại a</option><option value="b">Lễ loại b</option><option value="c">Lễ loại c</option></select></label></div><button className="primary-btn full" type="submit" disabled={predicting}>{predicting?<LoaderCircle size={17} className="spin"/>:<Sparkles size={17}/>} Chạy dự đoán <ArrowRight size={17}/></button></form>
+    <form className="prediction-form" onSubmit={submitPrediction}>
+      <div className="form-grid">
+        <label className="prediction-store-control">Mã cửa hàng
+          <button
+            type="button"
+            className="prediction-store-button"
+            aria-haspopup="listbox"
+            aria-expanded={predictionStoreOpen}
+            disabled={stores.length===0}
+            onClick={()=>setPredictionStoreOpen(open=>!open)}
+          >
+            <span><Search size={14}/> Store #{form.store}</span>
+            <ChevronDown size={15}/>
+          </button>
+          {predictionStoreOpen && <div className="prediction-store-dropdown" role="listbox">
+            <input
+              autoFocus
+              type="text"
+              inputMode="numeric"
+              placeholder="Tìm mã cửa hàng..."
+              value={predictionStoreFilter}
+              onChange={e=>setPredictionStoreFilter(e.target.value.replace(/\D/g,''))}
+            />
+            <div className="store-options">
+              {filteredPredictionStores.map(s=><button
+                type="button"
+                key={s.store}
+                role="option"
+                aria-selected={form.store===s.store}
+                onClick={()=>{setForm(prev=>({...prev,store:s.store}));setPredictionStoreOpen(false);setPredictionStoreFilter('');}}
+              >
+                Store #{s.store}<span>Loại {s.store_type}</span>
+              </button>)}
+              {filteredPredictionStores.length===0 && <div className="store-no-results">Không tìm thấy cửa hàng</div>}
+            </div>
+          </div>}
+        </label>
+        <label>Ngày dự báo<input type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})}/></label>
+        <label>Khuyến mãi<select value={form.promo} onChange={e=>setForm({...form,promo:Number(e.target.value)})}><option value={1}>Có khuyến mãi</option><option value={0}>Không</option></select></label>
+        <label>Trạng thái cửa hàng<select value={form.open} onChange={e=>setForm({...form,open:Number(e.target.value)})}><option value={1}>Mở cửa</option><option value={0}>Đóng cửa</option></select></label>
+        <label>Nghỉ học của trường học<select value={form.school_holiday} onChange={e=>setForm({...form,school_holiday:Number(e.target.value)})}><option value={0}>Không</option><option value={1}>Có</option></select></label>
+        <label>Ngày lễ<select value={form.state_holiday} onChange={e=>setForm({...form,state_holiday:e.target.value})}><option value="0">Ngày thường</option><option value="a">Lễ loại a</option><option value="b">Lễ loại b</option><option value="c">Lễ loại c</option></select></label>
+      </div>
+      <button className="primary-btn full" type="submit" disabled={predicting}>{predicting?<LoaderCircle size={17} className="spin"/>:<Sparkles size={17}/>} Chạy dự đoán <ArrowRight size={17}/></button>
+    </form>
     {predictResult && <div className="result-box"><span>DOANH THU ƯỚC TÍNH</span><strong>{euros(predictResult.predicted_sales)}</strong><small>Store #{predictResult.store} · {predictResult.date} · EUR</small></div>}
     </section>
     <section className="panel model-panel" id="model"><div className="panel-header"><div><div className="heading-top">MODEL PERFORMANCE</div><h2>Đánh giá mô hình</h2><p>Kiểm định theo thời gian, không chia ngẫu nhiên.</p></div><div className="panel-symbol purple"><Activity size={20}/></div></div><div className="model-status"><span className="good-dot"/> {model?.trained?'Mô hình đã được huấn luyện':'Chưa tìm thấy mô hình'} <CheckCircle2 size={16}/></div><div className="model-metrics"><div><span>MAE</span><strong>{model?.validation?euros(model.validation.mae):'—'}</strong><small>Sai số tuyệt đối TB</small></div><div><span>RMSE</span><strong>{model?.validation?euros(model.validation.rmse):'—'}</strong><small>Sai số căn bậc hai TB</small></div><div><span>RMSPE</span><strong>{model?.validation?fmt(model.validation.rmspe):'—'}</strong><small>Đo trên Sales &gt; 0</small></div></div><div className="model-divider"/><div className="validation-notes"><div><Clock3 size={16}/> Tập validation</div><strong>{model?.validation_dates?`${model.validation_dates[0]} → ${model.validation_dates[1]}`:'—'}</strong></div><div className="validation-notes"><div><ShieldCheck size={16}/> So với baseline (MAE)</div><strong>{model?.baseline?euros(model.baseline.mae):'—'}</strong></div><p className="model-caption">Không dùng Sales/Customers làm đầu vào. Khi cửa hàng đóng cửa, dự đoán bằng 0.</p></section></div>

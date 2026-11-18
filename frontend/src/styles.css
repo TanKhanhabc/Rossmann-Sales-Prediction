@@ -221,6 +221,15 @@ h1 { margin-bottom: 7px; color: #21364a; font-family: Manrope, sans-serif; font-
 .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; }
 .prediction-form label { display: flex; min-width: 0; flex-direction: column; gap: 7px; color: #788b98; font-size: 11px; font-weight: 700; }
 .prediction-form input, .prediction-form select { min-width: 0; height: 36px; padding: 0 10px; color: #344b5b; background: #fff; border: 1px solid #dfe8ea; border-radius: 7px; outline: 0; font-size: 12px; transition: border-color .16s ease, box-shadow .16s ease; }
+.prediction-store-control { position: relative; }
+.prediction-store-button { display: flex; width: 100%; height: 36px; align-items: center; justify-content: space-between; padding: 0 10px; color: #344b5b; background: #fff; border: 1px solid #dfe8ea; border-radius: 7px; outline: 0; font-size: 12px; font-weight: 700; }
+.prediction-store-button > span { display: flex; align-items: center; gap: 7px; }
+.prediction-store-button svg { color: #8da09e; }
+.prediction-store-button:focus-visible { border-color: #47b999; box-shadow: 0 0 0 3px rgba(24,175,132,.11); }
+.prediction-store-button:disabled { cursor: wait; opacity: .65; }
+.prediction-store-dropdown { position: absolute; z-index: 20; top: 59px; left: 0; width: 100%; min-width: 215px; padding: 9px; background: #fff; border: 1px solid #dce7e8; border-radius: 10px; box-shadow: 0 13px 33px rgba(43,55,75,.18); }
+.prediction-store-dropdown input { width: 100%; }
+.store-no-results { padding: 9px; color: #9aa8b2; text-align: center; font-size: 12px; }
 .primary-btn.full { width: 100%; height: 38px; justify-content: center; margin-top: 17px; }
 .result-box { display: flex; flex-direction: column; padding: 13px; margin-top: 13px; background: linear-gradient(110deg, #eaf9f2, #f3fbf7); border: 1px solid #d6efe2; border-radius: 9px; }
 .result-box span { color: #0d8c6c; font-size: 11px; font-weight: 800; letter-spacing: 1px; }
