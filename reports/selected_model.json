@@ -1,0 +1,21 @@
+{
+  "model": "lightgbm",
+  "params": {
+    "model__colsample_bytree": 0.9,
+    "model__learning_rate": 0.055,
+    "model__max_depth": -1,
+    "model__min_child_samples": 45,
+    "model__n_estimators": 420,
+    "model__num_leaves": 38,
+    "model__random_state": 42,
+    "model__reg_lambda": 2.0,
+    "model__subsample": 0.9,
+    "model__subsample_freq": 1
+  },
+  "selection_rule": "simplest model within one SD of the lowest mean validation MAE",
+  "best_mean_val_mae": 1128.8081820951288,
+  "one_sd_threshold": 1193.4955061291987,
+  "validation_start": "2015-06-20",
+  "cv_splits": 3,
+  "cv_validation_metric": "MAE on original Sales scale"
+}

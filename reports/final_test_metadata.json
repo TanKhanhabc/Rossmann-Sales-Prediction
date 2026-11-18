@@ -1,0 +1,9 @@
+{
+  "fit_rows": 804056,
+  "validation_rows": 46830,
+  "validation_dates": [
+    "2015-06-20",
+    "2015-07-31"
+  ],
+  "note": "The 42-day holdout is excluded from fitting; both models are fit on all eligible pre-holdout training rows."
+}

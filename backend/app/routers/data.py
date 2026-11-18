@@ -6,7 +6,6 @@ from app.services.data_service import (
     METRICS_FILE,
     data_profile,
     get_actual_sales,
-    get_history,
     get_stores,
     get_train,
     overview,
@@ -32,17 +31,6 @@ def stores():
              "assortment": str(r.Assortment),
              "competition_distance": None if r.CompetitionDistance != r.CompetitionDistance else float(r.CompetitionDistance)}
             for r in frame.itertuples(index=False)]
-
-
-@router.get("/history")
-def history(
-    store: int | None = None,
-    days: int = Query(45, ge=1, le=365),
-    start_date: date | None = None,
-):
-    if store is not None and store not in set(get_stores().Store):
-        raise HTTPException(status_code=404, detail="Không tìm thấy cửa hàng")
-    return {"store": store, "days": days, "points": get_history(store, days, start_date)}
 
 
 @router.get("/actual-sales")

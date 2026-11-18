@@ -53,13 +53,6 @@ def predict(request: PredictRequest):
     return make_predictions([request])[0]
 
 
-@router.post("/predict-batch")
-def predict_batch(requests: list[PredictRequest]):
-    if not requests or len(requests) > 500:
-        raise HTTPException(status_code=422, detail="Provide between 1 and 500 requests")
-    return {"count": len(requests), "predictions": make_predictions(requests)}
-
-
 @router.get("/forecast")
 def forecast(
     store: int = Query(1, ge=1), start_date: date = Query(date(2015, 8, 1)),

@@ -16,7 +16,6 @@ export type PredictResult = {store:number;date:string;predicted_sales:number;ope
 export const api = {
   summary: () => request<Summary>('/overview'),
   stores: () => request<Store[]>('/stores'),
-  history: (store: number, startDate: string, days: number) => request<{points: Point[]}>(`/history?store=${store}&start_date=${startDate}&days=${days}`),
   actualSales: (store: number, startDate: string, endDate: string) => request<ActualSales>(`/actual-sales?store=${store}&start_date=${startDate}&end_date=${endDate}`),
   model: () => request<Model>('/model-info'),
   forecast: (store: number, startDate: string, days: number) => request<Forecast>(`/forecast?store=${store}&start_date=${startDate}&days=${days}`),

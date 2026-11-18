@@ -60,7 +60,7 @@ def train_and_evaluate(validation_days: int = 42, n_estimators: int = 420) -> di
         "baseline": score(val_df.Sales.to_numpy(), np.asarray(baseline)),
         "features": FEATURES,
         "important_features": sorted([{"feature": k, "importance": int(v)} for k, v in zip(FEATURES, model.feature_importances_)], key=lambda o: -o["importance"])[:12],
-        "notes": ["42-day chronological holdout; no random split.",
+        "notes": [f"{validation_days}-day chronological holdout; no random split.",
                   "Sales and Customers are explicitly excluded from input features.",
                   "Closed stores yield 0 by business rule; missing test Open is estimated.",
                   "The validation model was trained only on dates before the validation interval.",
