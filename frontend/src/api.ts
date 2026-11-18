@@ -20,5 +20,4 @@ export const api = {
   model: () => request<Model>('/model-info'),
   forecast: (store: number, startDate: string, days: number) => request<Forecast>(`/forecast?store=${store}&start_date=${startDate}&days=${days}`),
   predict: (data: PredictInput) => request<PredictResult>('/predict', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)}),
-  submissionUrl: '/api/submission',
 };

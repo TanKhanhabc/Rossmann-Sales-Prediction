@@ -11,7 +11,7 @@ Dự đoán `Sales` theo `Store + Date`. Dataset gốc có **1.017.209** bản g
 5. Fit LightGBM trên `log1p(Sales)` khi cửa hàng mở và doanh thu dương; clamp dự đoán về ≥0, ép 0 khi đóng.
 6. So với baseline trung bình nhóm (`Store`, `DayOfWeek`, `Promo`) dựa trên lịch sử **trước** validation.
 7. Đánh giá MAE, RMSE, RMSPE (loại Sales=0), WAPE. Sau đó fit lại trên toàn bộ lịch sử và lưu `models/rossmann_sales_lgbm.joblib`.
-8. Đọc `test_merged.csv` để dự đoán và xuất `results/submission.csv` với đúng Id.
+8. Dùng mô hình đã huấn luyện để dự đoán theo ngày/cửa hàng qua dashboard; lịch trong `test.csv` chỉ cung cấp các điều kiện lịch đã biết cho dự báo.
 
 ## Lưu ý
 - MAE/RMSE phải đọc từ `results/evaluation_metrics.json` sau khi chạy train, không điền đoán.
@@ -21,4 +21,4 @@ Dự đoán `Sales` theo `Store + Date`. Dataset gốc có **1.017.209** bản g
 - Thời tiết lịch sử được nối từ `data/external/` sau khi làm sạch; ngày không có quan sát thời tiết dùng trung vị lịch sử của bang, không phải dự báo thời tiết.
 - Metric validation dùng quan sát thời tiết thực tế trong CSV cho giai đoạn holdout; do đó có thể lạc quan hơn dự báo thực hiện trước khi biết thời tiết.
 - Cách tính tuần Promo2 từ năm ISO gần đúng, không xử lý hoàn hảo năm 53 tuần.
-- **Không có kết quả thử nghiệm trên hidden Kaggle test** cho tới khi người dùng nộp CSV hợp lệ.
+- Test không có nhãn `Sales`, nên không thể đo metric dự đoán trên tập này.

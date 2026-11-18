@@ -5,10 +5,9 @@ from typing import Literal
 import numpy as np
 import pandas as pd
 from fastapi import APIRouter, HTTPException, Query
-from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from app.model.predict_model import infer
-from app.services.data_service import SUBMISSION_FILE, get_stores, get_test_schedule
+from app.services.data_service import get_stores, get_test_schedule
 
 router = APIRouter(prefix="/api", tags=["Forecast & Prediction"])
 
@@ -94,10 +93,3 @@ def forecast(
         "warning": "Kết quả là ước tính. Ngày không có trong test.csv dùng giả định: nghỉ Chủ nhật, Promo/SchoolHoliday/StateHoliday theo thông số yêu cầu. Dữ liệu lịch sử 2013–2015, không phải dự báo thời gian thực.",
         "points": prediction,
     }
-
-
-@router.get("/submission")
-def download_submission():
-    if not SUBMISSION_FILE.exists():
-        raise HTTPException(status_code=404, detail="Run python scripts/submission/generate_submission.py first")
-    return FileResponse(SUBMISSION_FILE, filename="rossmann_submission.csv", media_type="text/csv")

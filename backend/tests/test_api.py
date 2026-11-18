@@ -28,6 +28,10 @@ def test_predict_batch_endpoint_is_removed():
     assert client.post("/api/predict-batch", json=[]).status_code == 404
 
 
+def test_submission_endpoint_is_removed():
+    assert client.get("/api/submission").status_code == 404
+
+
 def test_actual_sales_returns_only_train_rows_in_selected_range(monkeypatch):
     rows = pd.DataFrame([
         {"Store": 1, "Date": pd.Timestamp("2015-07-30"), "Sales": 300, "Customers": 3},

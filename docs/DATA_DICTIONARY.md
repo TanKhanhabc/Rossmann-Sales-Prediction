@@ -14,7 +14,7 @@
 | SchoolHoliday | Ngày nghỉ học | Đặc trưng |
 
 ## test.csv — 41.088 bản ghi, 8 cột
-Chứa `Id`, `Store`, `DayOfWeek`, `Date`, `Open`, `Promo`, `StateHoliday`, `SchoolHoliday`. **Không có Sales và Customers**. Có 11 dòng thiếu `Open`, đều tại Store 622; script `scripts/preprocessing/prepare_data.py` điền theo ngày trong tuần (Chủ nhật đóng) vào `data/processed/test.csv`; file gốc không bị sửa. `Id` chỉ để đối chiếu khi xuất submission. Dữ liệu train/test đã nối thông tin cửa hàng được lưu lần lượt trong `data/merged/train_merged.csv` và `data/merged/test_merged.csv`.
+Chứa `Id`, `Store`, `DayOfWeek`, `Date`, `Open`, `Promo`, `StateHoliday`, `SchoolHoliday`. **Không có Sales và Customers**. Có 11 dòng thiếu `Open`, đều tại Store 622; script `scripts/preprocessing/prepare_data.py` điền theo ngày trong tuần (Chủ nhật đóng) vào `data/processed/test.csv`; file gốc không bị sửa. `Id` là mã bản ghi nguồn, không tham gia tính đặc trưng dự đoán. Dữ liệu train/test đã nối thông tin cửa hàng được lưu lần lượt trong `data/merged/train_merged.csv` và `data/merged/test_merged.csv`.
 
 ## store.csv — 1.115 bản ghi, 10 cột nguồn
 `Store`, `StoreType`, `Assortment`, `CompetitionDistance`, `CompetitionOpenSinceMonth`, `CompetitionOpenSinceYear`, `Promo2`, `Promo2SinceWeek`, `Promo2SinceYear`, `PromoInterval`.

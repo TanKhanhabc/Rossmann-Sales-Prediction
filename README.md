@@ -6,9 +6,8 @@ Một **monorepo hoàn chỉnh** dựa trên cách chia thư mục của [Coffee
 - **Dataset gốc**: `data/raw/train.csv` (1.017.209 dòng, 9 cột), `data/raw/test.csv` (41.088 dòng, 8 cột), `data/raw/store.csv` (1.115 dòng, 10 cột).
 - **EDA**: báo cáo theo tháng, thiếu dữ liệu, kiểm tra thời gian, không nhầm `Customers` với doanh thu.
 - **LightGBM**: đặc trưng cửa hàng, lịch và thời tiết theo bang/ngày; validation **42 ngày cuối** (MAE, RMSE, RMSPE, WAPE), baseline dự đoán theo Store/Weekday/Promo. Lưu model tại `models/rossmann_sales_lgbm.joblib`.
-- **FastAPI**: overview, stores, lịch sử, đánh giá, dự đoán 1 ngày / batch, dự báo 7/14/30 ngày theo lịch test, tải Kaggle submission.
+- **FastAPI**: overview, stores, lịch sử, đánh giá, dự đoán 1 ngày và dự báo 7/14/30 ngày theo lịch test.
 - **React + Vite + TypeScript + Recharts**: Dashboard tiếng Việt, biểu đồ và dự đoán trực tiếp từ ML API (không vẽ dữ liệu mô phỏng).
-- **Đầu ra Kaggle**: `results/submission.csv` gồm **Id,Sales** đúng 41.088 dòng và thứ tự test.csv.
 - Docker Compose, unit tests, notebooks và hướng dẫn.
 
 **LƯU Ý QUAN TRỌNG:** Dữ liệu Rossmann từ **2013–2015**. Khoảng test là **2015-08-01 đến 2015-09-17**. Dự báo ngoài khoảng ngày có lịch test sẽ dùng **giả định kịch bản**, không phải lịch khuyến mãi thực hay kết quả live năm 2026. `Sales` đo bằng EUR.
@@ -34,12 +33,11 @@ RossmannSalesForecast/
 ├── data/processed/ (cleaned CSVs and preprocessing report)
 ├── data/merged/ (train_merged.csv and test_merged.csv)
 ├── models/ (rossmann_sales_lgbm.joblib)
-├── results/ (evaluation_metrics.json, submission.csv, EDA_REPORT.md, monthly_sales.csv)
+├── results/ (evaluation_metrics.json, EDA_REPORT.md, monthly_sales.csv)
 ├── scripts/
 │   ├── preprocessing/prepare_data.py
 │   ├── analysis/run_eda.py
 │   ├── evaluation/run_evaluation.py
-│   └── submission/generate_submission.py
 ├── notebooks/ (exploratory/eda.ipynb, ML_Experiment.ipynb)
 ├── docs/ (DATA_DICTIONARY.md, ML_REPORT.md, API_CONTRACT.md, TEAM_ASSIGNMENT.md)
 ├── docker-compose.yml
@@ -67,13 +65,12 @@ Giao diện: **http://localhost:5173**. Vite proxy `/api` sang FastAPI ở cổn
 
 Hoặc chạy `./start_windows.ps1` khi PowerShell policy cho phép.
 
-## 3. Train lại model / đánh giá / xuất Kaggle
+## 3. Train lại model / đánh giá
 Ở thư mục gốc dự án (không đứng trong backend), chuẩn bị dữ liệu một lần sau khi thêm CSV vào `data/raw/`:
 ```powershell
 py scripts/preprocessing/prepare_data.py
 py scripts/analysis/run_eda.py
 py scripts/evaluation/run_evaluation.py
-py scripts/submission/generate_submission.py
 py -m pytest backend/tests -q
 ```
 Script lưu CSV đã xử lý và dữ liệu ngoài đã làm sạch trong `data/processed/`, các file `train_merged.csv` và `test_merged.csv` (đã bổ sung thời tiết) trong `data/merged/`, và không sửa các file nguồn. Thời tiết được ánh xạ qua mã bang và ngày; giá trị đo bị thiếu được điền bằng trung vị của bang. Khi dự đoán ngày không có quan sát thời tiết, mô hình dùng trung vị lịch sử của bang. Chạy lại script khi thay đổi CSV nguồn. Khi dùng `start_windows.ps1`, bước chuẩn bị này được chạy tự động; Docker cũng chuẩn bị dữ liệu trong lúc build image.
@@ -100,7 +97,7 @@ Dockerfiles đã được cung cấp và kiểm tra cú pháp; nếu chưa có D
 - **Dự báo theo cửa hàng**: chọn mã Store, ngày bắt đầu, 7/14/30 ngày. Nếu lịch nằm trong test.csv thì dùng Promo/Open/... từ chính test; ngoài khoảng đó là giả định.
 - **Dự đoán kịch bản**: chọn Store/Date/Open/Promo/StateHoliday/SchoolHoliday và chạy mô hình thực.
 - **Hiệu suất**: điểm kiểm định MAE/RMSE/RMSPE và baseline.
-- **Dữ liệu**: tình trạng 3 dataset và link tải `submission.csv`.
+- **Dữ liệu**: tình trạng 3 dataset và nguồn dữ liệu dự báo.
 
 ## 6. Lưu ý ML
 - **Sales** là doanh thu trên một cửa hàng và một ngày (không phải số lượng hóa đơn).

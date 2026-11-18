@@ -20,7 +20,6 @@ DIRECTORIES = [
     "results",
     "scripts/preprocessing",
     "scripts/analysis",
-    "scripts/submission",
 ]
 
 

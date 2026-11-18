@@ -12,7 +12,6 @@ Swagger: `http://127.0.0.1:8000/docs`
 | GET | `/api/model-info` | Metrics từ holdout thực |
 | POST | `/api/predict` | Dự đoán 1 cửa hàng 1 ngày |
 | GET | `/api/forecast?store=1&start_date=2015-08-01&days=14` | Dự báo nhiều ngày, dùng lịch test khi có |
-| GET | `/api/submission` | Tải Id,Sales cho Kaggle |
 
 Request `/api/predict`:
 ```json
