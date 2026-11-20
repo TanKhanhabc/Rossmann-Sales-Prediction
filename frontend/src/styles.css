@@ -202,7 +202,6 @@ h1 { margin-bottom: 7px; color: #21364a; font-family: Manrope, sans-serif; font-
 .view-tabs { width: max-content; max-width: 100%; margin-bottom: 18px; }
 .view-tabs button { display: flex; align-items: center; gap: 7px; padding: 9px 14px; font-size: 13px; }
 .chart-title { color: #526977; font-size: 12px; }
-.actual-history-section { margin-bottom: 18px; }
 .date-range-error { min-height: 0; padding: 12px; color: #a94444; }
 .chart-key { display: flex; align-items: center; gap: 7px; color: #82949e; font-size: 11px; }
 .chart-key span { width: 8px; height: 8px; background: #1fbc99; border-radius: 50%; }

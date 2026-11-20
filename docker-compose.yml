@@ -7,5 +7,5 @@ services:
       - ./results:/workspace/results:ro
   frontend:
     build: {context: ., dockerfile: frontend/Dockerfile}
-    ports: ["8080:80"]
+    ports: ["5173:80"]
     depends_on: [backend]

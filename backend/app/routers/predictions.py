@@ -1,13 +1,11 @@
 from __future__ import annotations
 from datetime import date, timedelta
-from functools import lru_cache
 from typing import Literal
-import numpy as np
 import pandas as pd
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 from app.model.predict_model import infer
-from app.services.data_service import get_stores, get_test_schedule
+from app.services.data_service import get_stores, get_test_schedule, get_test_store_ranges
 
 router = APIRouter(prefix="/api", tags=["Forecast & Prediction"])
 
@@ -18,6 +16,24 @@ class PredictRequest(BaseModel):
     open: int = Field(default=1, ge=0, le=1)
     state_holiday: Literal["0", "a", "b", "c"] = "0"
     school_holiday: int = Field(default=0, ge=0, le=1)
+
+
+class ForecastSchedule(BaseModel):
+    date: date
+    promo: int = Field(ge=0, le=1)
+    open: int = Field(ge=0, le=1)
+    school_holiday: int = Field(ge=0, le=1)
+    state_holiday: Literal["0", "a", "b", "c"] = "0"
+
+
+class ForecastRequest(BaseModel):
+    store: int = Field(ge=1)
+    start_date: date
+    days: int = Field(ge=1, le=30)
+    schedule: list[ForecastSchedule] = Field(default_factory=list)
+    assumed_promo: int = Field(default=0, ge=0, le=1)
+    assumed_school_holiday: int = Field(default=0, ge=0, le=1)
+    assumed_state_holiday: Literal["0", "a", "b", "c"] = "0"
 
 
 def validate_store(store: int) -> None:
@@ -52,6 +68,68 @@ def predict(request: PredictRequest):
     return make_predictions([request])[0]
 
 
+@router.get("/test-predictions")
+def test_predictions(
+    store: int = Query(..., ge=1),
+    start_date: date = Query(...),
+    end_date: date = Query(...),
+):
+    validate_store(store)
+    if start_date > end_date:
+        raise HTTPException(
+            status_code=422,
+            detail="Ngày bắt đầu phải trước hoặc bằng ngày kết thúc",
+        )
+
+    ranges = get_test_store_ranges()
+    store_range = ranges.loc[ranges.Store.eq(store)]
+    if store_range.empty:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Store {store} không có dữ liệu trong test.csv",
+        )
+    test_start = store_range.iloc[0].start_date.date()
+    test_end = store_range.iloc[0].end_date.date()
+    if start_date < test_start or end_date > test_end:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Khoảng ngày của cửa hàng {store} phải nằm trong test.csv ({test_start} – {test_end})",
+        )
+
+    test = get_test_schedule()
+    selected = test.loc[
+        test.Store.eq(store)
+        & test.Date.ge(pd.Timestamp(start_date))
+        & test.Date.le(pd.Timestamp(end_date))
+    ].sort_values("Date")
+    if selected.empty:
+        values = []
+    else:
+        try:
+            values = infer(selected)
+        except FileNotFoundError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    points = [
+        {
+            "date": row.Date.date().isoformat(),
+            "predicted_sales": round(float(value), 2),
+            "open": int(row.Open),
+            "promo": int(row.Promo),
+            "state_holiday": str(row.StateHoliday).replace("0.0", "0"),
+            "school_holiday": int(row.SchoolHoliday),
+        }
+        for row, value in zip(selected.itertuples(index=False), values)
+    ]
+    return {
+        "store": store,
+        "start_date": start_date.isoformat(),
+        "end_date": end_date.isoformat(),
+        "total_predicted_sales": round(sum(point["predicted_sales"] for point in points), 2),
+        "points": points,
+    }
+
+
 @router.get("/forecast")
 def forecast(
     store: int = Query(1, ge=1), start_date: date = Query(date(2015, 8, 1)),
@@ -60,16 +138,60 @@ def forecast(
     assumed_school_holiday: int = Query(0, ge=0, le=1),
     assumed_state_holiday: Literal["0", "a", "b", "c"] = "0",
 ):
+    return make_forecast(
+        store, start_date, days, [], assumed_promo,
+        assumed_school_holiday, assumed_state_holiday,
+    )
+
+
+@router.post("/forecast")
+def forecast_with_schedule(request: ForecastRequest):
+    return make_forecast(
+        request.store, request.start_date, request.days, request.schedule,
+        request.assumed_promo, request.assumed_school_holiday,
+        request.assumed_state_holiday,
+    )
+
+
+def make_forecast(
+    store: int,
+    start_date: date,
+    days: int,
+    user_schedule: list[ForecastSchedule],
+    assumed_promo: int,
+    assumed_school_holiday: int,
+    assumed_state_holiday: str,
+):
     validate_store(store)
     known = get_test_schedule()
     target_dates = pd.date_range(start_date, periods=days, freq="D")
     window = known.loc[known.Store.eq(store) & known.Date.isin(target_dates)]
     schedule = {row.Date.date(): row for row in window.itertuples(index=False)}
+    user_schedule_by_date = {}
+    for entry in user_schedule:
+        if entry.date < start_date or entry.date >= start_date + timedelta(days=days):
+            raise HTTPException(
+                status_code=422,
+                detail=f"Schedule date {entry.date.isoformat()} is outside the forecast range",
+            )
+        if entry.date in user_schedule_by_date:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Duplicate schedule date: {entry.date.isoformat()}",
+            )
+        user_schedule_by_date[entry.date] = entry
     requests = []
     sources = []
     for dt in target_dates:
         d = dt.date()
-        if d in schedule:
+        if d in user_schedule_by_date:
+            row = user_schedule_by_date[d]
+            requests.append(PredictRequest(
+                store=store, date=d, promo=row.promo, open=row.open,
+                school_holiday=row.school_holiday, state_holiday=row.state_holiday,
+            ))
+            sources.append("user")
+        elif d in schedule:
             row = schedule[d]
             requests.append(PredictRequest(store=store, date=d, promo=int(row.Promo), open=int(row.Open),
                                            school_holiday=int(row.SchoolHoliday),
@@ -83,13 +205,16 @@ def forecast(
                                            state_holiday=assumed_state_holiday))
             sources.append("assumption")
     prediction = make_predictions(requests)
-    for row, src in zip(prediction, sources):
+    for row, src, item in zip(prediction, sources, requests):
         row["schedule_source"] = src
+        row["school_holiday"] = item.school_holiday
+        row["state_holiday"] = item.state_holiday
     return {
         "store": store, "start_date": start_date.isoformat(), "days": days,
         "total_predicted_sales": round(float(sum(x["predicted_sales"] for x in prediction)), 2),
-        "known_schedule_days": sources.count("test.csv"),
+        "known_schedule_days": sources.count("test.csv") + sources.count("user"),
         "assumed_schedule_days": sources.count("assumption"),
-        "warning": "Kết quả là ước tính. Ngày không có trong test.csv dùng giả định: nghỉ Chủ nhật, Promo/SchoolHoliday/StateHoliday theo thông số yêu cầu. Dữ liệu lịch sử 2013–2015, không phải dự báo thời gian thực.",
+        "user_schedule_days": sources.count("user"),
+        "warning": "Kết quả là ước tính. Lịch người dùng được ưu tiên, ngày chưa cấu hình dùng lịch test.csv nếu có; các ngày còn lại giả định nghỉ Chủ nhật và không khuyến mãi/ngày lễ. Dữ liệu lịch sử 2013–2015, không phải dự báo thời gian thực.",
         "points": prediction,
     }

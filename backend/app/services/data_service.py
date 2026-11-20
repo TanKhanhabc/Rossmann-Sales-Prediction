@@ -1,6 +1,5 @@
 """Centralized access to datasets prepared by scripts/preprocessing/prepare_data.py."""
 from __future__ import annotations
-from datetime import date
 from functools import lru_cache
 from pathlib import Path
 import json
@@ -57,6 +56,14 @@ def get_test_schedule() -> pd.DataFrame:
     return pd.read_csv(require_csv("test.csv"), parse_dates=["Date"], low_memory=False)
 
 
+def get_test_store_ranges() -> pd.DataFrame:
+    return (
+        get_test_schedule()
+        .groupby("Store", as_index=False)["Date"]
+        .agg(start_date="min", end_date="max")
+    )
+
+
 @lru_cache(maxsize=1)
 def get_preprocessing_report() -> dict:
     path = require_csv("preprocessing_report.json")
@@ -85,25 +92,6 @@ def overview() -> dict:
         "missing_test_open": int(get_preprocessing_report()["missing_test_open_original"]),
     }
 
-
-def get_actual_sales(store: int, start_date: date, end_date: date) -> list[dict]:
-    df = get_train()
-    df = df.loc[
-        df.Store.eq(store)
-        & df.Date.ge(pd.Timestamp(start_date))
-        & df.Date.le(pd.Timestamp(end_date))
-    ]
-    daily = df.groupby("Date", sort=True).agg(sales=("Sales", "sum"))
-    if "Customers" in df:
-        daily["customers"] = df.groupby("Date", sort=True)["Customers"].sum()
-    return [
-        {
-            "date": idx.date().isoformat(),
-            "sales": int(row.sales),
-            "customers": int(row.customers) if "customers" in daily else None,
-        }
-        for idx, row in daily.iterrows()
-    ]
 
 
 def data_profile() -> dict:

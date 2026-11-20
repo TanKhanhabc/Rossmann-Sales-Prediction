@@ -1,12 +1,12 @@
 from __future__ import annotations
-from datetime import date
 import json
-from fastapi import APIRouter, HTTPException, Query
+import pandas as pd
+from fastapi import APIRouter
 from app.services.data_service import (
     METRICS_FILE,
     data_profile,
-    get_actual_sales,
     get_stores,
+    get_test_store_ranges,
     get_train,
     overview,
 )
@@ -33,34 +33,29 @@ def stores():
             for r in frame.itertuples(index=False)]
 
 
-@router.get("/actual-sales")
-def actual_sales(
-    store: int = Query(..., ge=1),
-    start_date: date | None = None,
-    end_date: date | None = None,
-):
-    if store not in set(get_stores().Store):
-        raise HTTPException(status_code=404, detail="Không tìm thấy cửa hàng")
+@router.get("/test-stores")
+def test_stores():
+    ranges = get_test_store_ranges()
+    frame = ranges.merge(
+        get_stores()[["Store", "StoreType", "Assortment", "CompetitionDistance"]],
+        on="Store",
+        how="left",
+        validate="one_to_one",
+    ).sort_values("Store")
+    return [
+        {
+            "store": int(row.Store),
+            "store_type": str(row.StoreType),
+            "assortment": str(row.Assortment),
+            "competition_distance": (
+                None if pd.isna(row.CompetitionDistance) else float(row.CompetitionDistance)
+            ),
+            "start_date": row.start_date.date().isoformat(),
+            "end_date": row.end_date.date().isoformat(),
+        }
+        for row in frame.itertuples(index=False)
+    ]
 
-    train = get_train()
-    train_start = train.Date.min().date()
-    train_end = train.Date.max().date()
-    start_date = start_date or train_start
-    end_date = end_date or train_end
-    if start_date > end_date:
-        raise HTTPException(status_code=422, detail="Ngày bắt đầu phải trước hoặc bằng ngày kết thúc")
-    if start_date < train_start or end_date > train_end:
-        raise HTTPException(
-            status_code=422,
-            detail=f"Khoảng ngày phải nằm trong dữ liệu train ({train_start} – {train_end})",
-        )
-
-    return {
-        "store": store,
-        "start_date": start_date.isoformat(),
-        "end_date": end_date.isoformat(),
-        "points": get_actual_sales(store, start_date, end_date),
-    }
 
 
 @router.get("/data-profile")

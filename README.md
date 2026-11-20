@@ -87,7 +87,7 @@ Mô hình đã được train trên CSV thật và kèm trong ZIP; bạn không 
 ```powershell
 docker compose up --build
 ```
-- Frontend: http://localhost:8080
+- Frontend: http://localhost:5173
 - API: http://localhost:8000/docs
 
 Dockerfiles đã được cung cấp và kiểm tra cú pháp; nếu chưa có Docker Engine hoặc không chạy Docker trên máy thì hãy chạy Python/Node như phần 2.

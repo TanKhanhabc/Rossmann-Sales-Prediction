@@ -20,6 +20,37 @@ def test_health_overview_and_stores():
     assert len(client.get("/api/stores").json()) == 1115
 
 
+def test_test_stores_returns_only_test_stores_with_per_store_date_ranges(monkeypatch):
+    schedule = pd.DataFrame([
+        {"Store": 2, "Date": pd.Timestamp("2015-08-03")},
+        {"Store": 1, "Date": pd.Timestamp("2015-08-01")},
+        {"Store": 2, "Date": pd.Timestamp("2015-08-05")},
+    ])
+    stores = pd.DataFrame([
+        {"Store": 1, "StoreType": "a", "Assortment": "a", "CompetitionDistance": 100},
+        {"Store": 2, "StoreType": "b", "Assortment": "b", "CompetitionDistance": 200},
+        {"Store": 3, "StoreType": "c", "Assortment": "c", "CompetitionDistance": 300},
+    ])
+    monkeypatch.setattr(
+        data,
+        "get_test_store_ranges",
+        lambda: schedule.groupby("Store", as_index=False)["Date"].agg(
+            start_date="min", end_date="max"
+        ),
+    )
+    monkeypatch.setattr(data, "get_stores", lambda: stores)
+
+    response = client.get("/api/test-stores")
+
+    assert response.status_code == 200
+    assert response.json() == [
+        {"store": 1, "store_type": "a", "assortment": "a", "competition_distance": 100.0,
+         "start_date": "2015-08-01", "end_date": "2015-08-01"},
+        {"store": 2, "store_type": "b", "assortment": "b", "competition_distance": 200.0,
+         "start_date": "2015-08-03", "end_date": "2015-08-05"},
+    ]
+
+
 def test_history_endpoint_is_removed():
     assert client.get("/api/history?store=1&days=5").status_code == 404
 
@@ -32,58 +63,10 @@ def test_submission_endpoint_is_removed():
     assert client.get("/api/submission").status_code == 404
 
 
-def test_actual_sales_returns_only_train_rows_in_selected_range(monkeypatch):
-    rows = pd.DataFrame([
-        {"Store": 1, "Date": pd.Timestamp("2015-07-30"), "Sales": 300, "Customers": 3},
-        {"Store": 1, "Date": pd.Timestamp("2015-07-31"), "Sales": 310, "Customers": 4},
-        {"Store": 1, "Date": pd.Timestamp("2015-08-01"), "Sales": 320, "Customers": 5},
-        {"Store": 2, "Date": pd.Timestamp("2015-07-31"), "Sales": 900, "Customers": 9},
-    ])
-    stores = pd.DataFrame({"Store": [1, 2]})
-    monkeypatch.setattr(data_service, "get_train", lambda: rows)
-    monkeypatch.setattr(data_service, "get_stores", lambda: stores)
-    monkeypatch.setattr(data, "get_train", lambda: rows)
-    monkeypatch.setattr(data, "get_stores", lambda: stores)
-
-    response = client.get(
+def test_actual_sales_endpoint_is_removed():
+    assert client.get(
         "/api/actual-sales?store=1&start_date=2015-07-31&end_date=2015-08-01"
-    )
-
-    assert response.status_code == 200
-    assert response.json() == {
-        "store": 1,
-        "start_date": "2015-07-31",
-        "end_date": "2015-08-01",
-        "points": [
-            {"date": "2015-07-31", "sales": 310, "customers": 4},
-            {"date": "2015-08-01", "sales": 320, "customers": 5},
-        ],
-    }
-
-
-def test_actual_sales_rejects_dates_outside_train(monkeypatch):
-    rows = pd.DataFrame([
-        {"Store": 1, "Date": pd.Timestamp("2015-07-31"), "Sales": 310},
-        {"Store": 1, "Date": pd.Timestamp("2015-08-01"), "Sales": 320},
-    ])
-    monkeypatch.setattr(data_service, "get_train", lambda: rows)
-    monkeypatch.setattr(data_service, "get_stores", lambda: pd.DataFrame({"Store": [1]}))
-    monkeypatch.setattr(data, "get_train", lambda: rows)
-    monkeypatch.setattr(data, "get_stores", lambda: pd.DataFrame({"Store": [1]}))
-
-    response = client.get(
-        "/api/actual-sales?store=1&start_date=2015-07-30&end_date=2015-08-01"
-    )
-
-    assert response.status_code == 422
-
-
-def test_actual_sales_rejects_reversed_date_range():
-    response = client.get(
-        "/api/actual-sales?store=1&start_date=2015-08-02&end_date=2015-08-01"
-    )
-
-    assert response.status_code == 422
+    ).status_code == 404
 
 
 def test_predict_and_closed():
@@ -97,6 +80,120 @@ def test_predict_and_closed():
     forecast = client.get("/api/forecast?store=1&start_date=2015-08-01&days=7")
     assert forecast.status_code == 200 and len(forecast.json()["points"]) == 7
     assert forecast.json()["known_schedule_days"] == 7
+    test_predictions = client.get(
+        "/api/test-predictions?store=1&start_date=2015-08-01&end_date=2015-08-01"
+    )
+    assert test_predictions.status_code == 200, test_predictions.text
+    assert len(test_predictions.json()["points"]) == 1
+    assert test_predictions.json()["points"][0]["date"] == "2015-08-01"
+    assert np.isfinite(test_predictions.json()["points"][0]["predicted_sales"])
+
+
+def test_test_predictions_uses_test_rows_for_selected_store_and_dates(monkeypatch):
+    schedule = pd.DataFrame([
+        {"Id": 1, "Store": 1, "DayOfWeek": 6, "Date": pd.Timestamp("2015-08-01"),
+         "Open": 1, "Promo": 0, "StateHoliday": "0", "SchoolHoliday": 1},
+        {"Id": 2, "Store": 1, "DayOfWeek": 7, "Date": pd.Timestamp("2015-08-02"),
+         "Open": 0, "Promo": 0, "StateHoliday": "0", "SchoolHoliday": 1},
+        {"Id": 3, "Store": 1, "DayOfWeek": 1, "Date": pd.Timestamp("2015-08-03"),
+         "Open": 1, "Promo": 1, "StateHoliday": "0", "SchoolHoliday": 0},
+        {"Id": 4, "Store": 2, "DayOfWeek": 6, "Date": pd.Timestamp("2015-08-01"),
+         "Open": 1, "Promo": 1, "StateHoliday": "0", "SchoolHoliday": 0},
+    ])
+    model_input = {}
+
+    def fake_infer(frame):
+        model_input["frame"] = frame
+        return np.array([120.5, 0])
+
+    monkeypatch.setattr(predictions, "get_stores", lambda: pd.DataFrame({"Store": [1, 2]}))
+    monkeypatch.setattr(predictions, "get_test_schedule", lambda: schedule)
+    monkeypatch.setattr(
+        predictions,
+        "get_test_store_ranges",
+        lambda: schedule.groupby("Store", as_index=False)["Date"].agg(
+            start_date="min", end_date="max"
+        ),
+    )
+    monkeypatch.setattr(predictions, "infer", fake_infer)
+
+    response = client.get(
+        "/api/test-predictions?store=1&start_date=2015-08-02&end_date=2015-08-03"
+    )
+
+    assert response.status_code == 200, response.text
+    result = response.json()
+    assert result["total_predicted_sales"] == 120.5
+    assert result["points"] == [
+        {"date": "2015-08-02", "predicted_sales": 120.5, "open": 0, "promo": 0,
+         "state_holiday": "0", "school_holiday": 1},
+        {"date": "2015-08-03", "predicted_sales": 0, "open": 1, "promo": 1,
+         "state_holiday": "0", "school_holiday": 0},
+    ]
+    assert model_input["frame"]["Id"].tolist() == [2, 3]
+    assert model_input["frame"]["DayOfWeek"].tolist() == [7, 1]
+
+
+def test_test_predictions_rejects_reversed_or_out_of_test_dates(monkeypatch):
+    schedule = pd.DataFrame([
+        {"Store": 1, "Date": pd.Timestamp("2015-08-01")},
+        {"Store": 1, "Date": pd.Timestamp("2015-08-03")},
+    ])
+    monkeypatch.setattr(predictions, "get_stores", lambda: pd.DataFrame({"Store": [1]}))
+    monkeypatch.setattr(predictions, "get_test_schedule", lambda: schedule)
+    monkeypatch.setattr(
+        predictions,
+        "get_test_store_ranges",
+        lambda: schedule.groupby("Store", as_index=False)["Date"].agg(
+            start_date="min", end_date="max"
+        ),
+    )
+
+    reversed_range = client.get(
+        "/api/test-predictions?store=1&start_date=2015-08-03&end_date=2015-08-01"
+    )
+    outside_range = client.get(
+        "/api/test-predictions?store=1&start_date=2015-07-31&end_date=2015-08-01"
+    )
+
+    assert reversed_range.status_code == 422
+    assert outside_range.status_code == 422
+
+
+def test_test_predictions_validates_dates_against_selected_store(monkeypatch):
+    schedule = pd.DataFrame([
+        {"Store": 1, "Date": pd.Timestamp("2015-08-01"), "Open": 1, "Promo": 0,
+         "StateHoliday": "0", "SchoolHoliday": 0},
+        {"Store": 1, "Date": pd.Timestamp("2015-08-03"), "Open": 1, "Promo": 0,
+         "StateHoliday": "0", "SchoolHoliday": 0},
+        {"Store": 2, "Date": pd.Timestamp("2015-08-05"), "Open": 1, "Promo": 0,
+         "StateHoliday": "0", "SchoolHoliday": 0},
+        {"Store": 2, "Date": pd.Timestamp("2015-08-07"), "Open": 1, "Promo": 0,
+         "StateHoliday": "0", "SchoolHoliday": 0},
+    ])
+    monkeypatch.setattr(predictions, "get_stores", lambda: pd.DataFrame({"Store": [1, 2]}))
+    monkeypatch.setattr(predictions, "get_test_schedule", lambda: schedule)
+    monkeypatch.setattr(
+        predictions,
+        "get_test_store_ranges",
+        lambda: schedule.groupby("Store", as_index=False)["Date"].agg(
+            start_date="min", end_date="max"
+        ),
+    )
+    monkeypatch.setattr(predictions, "infer", lambda frame: np.zeros(len(frame)))
+
+    before_store_range = client.get(
+        "/api/test-predictions?store=2&start_date=2015-08-01&end_date=2015-08-05"
+    )
+    valid_store_range = client.get(
+        "/api/test-predictions?store=2&start_date=2015-08-05&end_date=2015-08-07"
+    )
+
+    assert before_store_range.status_code == 422
+    assert valid_store_range.status_code == 200
+    assert [point["date"] for point in valid_store_range.json()["points"]] == [
+        "2015-08-05", "2015-08-07",
+    ]
 
 
 def test_forecast_uses_test_schedule_for_matching_store_dates(monkeypatch):
@@ -132,3 +229,69 @@ def test_forecast_uses_test_schedule_for_matching_store_dates(monkeypatch):
         {"Promo": 1, "Open": 0, "StateHoliday": "a", "SchoolHoliday": 0},
         {"Promo": 1, "Open": 1, "StateHoliday": "b", "SchoolHoliday": 1},
     ]
+
+
+def test_forecast_post_prefers_user_schedule_and_defaults_unconfigured_days(monkeypatch):
+    schedule = pd.DataFrame([
+        {"Store": 1, "Date": pd.Timestamp("2015-08-01"), "Open": 1, "Promo": 0,
+         "StateHoliday": "0", "SchoolHoliday": 1},
+        {"Store": 1, "Date": pd.Timestamp("2015-08-03"), "Open": 0, "Promo": 1,
+         "StateHoliday": "a", "SchoolHoliday": 0},
+    ])
+    model_input = {}
+
+    def fake_infer(frame):
+        model_input["frame"] = frame
+        return np.ones(len(frame))
+
+    monkeypatch.setattr(predictions, "get_test_schedule", lambda: schedule)
+    monkeypatch.setattr(predictions, "infer", fake_infer)
+
+    response = client.post("/api/forecast", json={
+        "store": 1,
+        "start_date": "2015-08-01",
+        "days": 4,
+        "schedule": [
+            {"date": "2015-08-01", "promo": 1, "open": 0,
+             "school_holiday": 0, "state_holiday": "b"},
+            {"date": "2015-08-04", "promo": 1, "open": 1,
+             "school_holiday": 1, "state_holiday": "c"},
+        ],
+    })
+
+    assert response.status_code == 200, response.text
+    result = response.json()
+    assert result["total_predicted_sales"] == 4
+    assert result["user_schedule_days"] == 2
+    assert result["known_schedule_days"] == 3
+    assert result["assumed_schedule_days"] == 1
+    assert [point["schedule_source"] for point in result["points"]] == [
+        "user", "assumption", "test.csv", "user",
+    ]
+    assert model_input["frame"][["Promo", "Open", "StateHoliday", "SchoolHoliday"]].to_dict("records") == [
+        {"Promo": 1, "Open": 0, "StateHoliday": "b", "SchoolHoliday": 0},
+        {"Promo": 0, "Open": 0, "StateHoliday": "0", "SchoolHoliday": 0},
+        {"Promo": 1, "Open": 0, "StateHoliday": "a", "SchoolHoliday": 0},
+        {"Promo": 1, "Open": 1, "StateHoliday": "c", "SchoolHoliday": 1},
+    ]
+
+
+def test_forecast_post_rejects_duplicate_user_schedule_dates(monkeypatch):
+    monkeypatch.setattr(predictions, "get_test_schedule", lambda: pd.DataFrame(columns=[
+        "Store", "Date", "Open", "Promo", "StateHoliday", "SchoolHoliday",
+    ]))
+    payload = {
+        "store": 1,
+        "start_date": "2015-08-01",
+        "days": 2,
+        "schedule": [
+            {"date": "2015-08-01", "promo": 0, "open": 1,
+             "school_holiday": 0, "state_holiday": "0"},
+            {"date": "2015-08-01", "promo": 1, "open": 1,
+             "school_holiday": 0, "state_holiday": "0"},
+        ],
+    }
+
+    response = client.post("/api/forecast", json=payload)
+
+    assert response.status_code == 422
