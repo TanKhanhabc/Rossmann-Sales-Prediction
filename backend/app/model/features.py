@@ -1,6 +1,7 @@
 """Feature engineering. NEVER use Sales or Customers as predictors.
 
-Weather observations are joined when available; unmatched dates use state history.
+Weather observations are joined when available; unmatched dates use past climate
+averages for the same state and calendar day, then month, then all states.
 """
 from __future__ import annotations
 import calendar
@@ -18,6 +19,10 @@ WEATHER_NUMERIC_COLUMNS = [
     "Max_Gust_SpeedKm_h", "Precipitationmm", "CloudCover", "WindDirDegrees",
 ]
 WEATHER_EVENTS = ["Rain", "Snow", "Fog", "Hail", "Thunderstorm"]
+WEATHER_CLIMATE_COLUMNS = [
+    *WEATHER_NUMERIC_COLUMNS,
+    *[f"Weather{event}" for event in WEATHER_EVENTS],
+]
 WEATHER_FEATURES = [
     *[column for column in WEATHER_NUMERIC_COLUMNS if column != "WindDirDegrees"],
     "WindDirSin", "WindDirCos", "WeatherMissingCount",
@@ -34,6 +39,38 @@ FEATURES = [
 ]
 
 
+def _historical_weather_average(
+    weather: pd.DataFrame,
+    state: str,
+    target_date: pd.Timestamp,
+) -> pd.Series:
+    history = weather.loc[weather["Date"].lt(target_date)]
+    state_history = history.loc[history["State"].eq(state)]
+    same_day = state_history.loc[
+        state_history["Date"].dt.month.eq(target_date.month)
+        & state_history["Date"].dt.day.eq(target_date.day)
+    ]
+    same_month = state_history.loc[state_history["Date"].dt.month.eq(target_date.month)]
+
+    average = pd.Series(np.nan, index=WEATHER_CLIMATE_COLUMNS, dtype=float)
+    for observations in (same_day, same_month, history):
+        average = average.fillna(observations[WEATHER_CLIMATE_COLUMNS].mean())
+
+    missing_measurements = [
+        column for column in WEATHER_NUMERIC_COLUMNS if pd.isna(average[column])
+    ]
+    if missing_measurements:
+        raise ValueError(
+            "No historical weather observations available before "
+            f"{target_date.date()} for columns: {missing_measurements}"
+        )
+    for event in WEATHER_EVENTS:
+        column = f"Weather{event}"
+        if pd.isna(average[column]):
+            average[column] = 0
+    return average
+
+
 def _attach_weather(
     schedule: pd.DataFrame,
     stores: pd.DataFrame,
@@ -46,6 +83,8 @@ def _attach_weather(
     if not {"State", "Date", *WEATHER_NUMERIC_COLUMNS, *WEATHER_FEATURES}.issubset(weather.columns):
         raise ValueError("Cleaned weather data is missing required columns")
 
+    weather = weather.copy()
+    weather["Date"] = pd.to_datetime(weather["Date"], errors="raise")
     weather_columns = [*WEATHER_NUMERIC_COLUMNS, *WEATHER_FEATURES]
     df = schedule.drop(columns=["State", *weather_columns], errors="ignore").merge(
         stores[["Store", "State"]], on="Store", how="left",
@@ -58,20 +97,21 @@ def _attach_weather(
         validate="many_to_one", sort=False,
     )
 
-    state_medians = weather.groupby("State", observed=True)[WEATHER_NUMERIC_COLUMNS].median()
-    global_medians = weather[WEATHER_NUMERIC_COLUMNS].median()
-    for column in WEATHER_NUMERIC_COLUMNS:
-        df[column] = (
-            df[column].fillna(df["State"].map(state_medians[column]))
-            .fillna(global_medians[column])
+    missing_weather = df[WEATHER_CLIMATE_COLUMNS].isna()
+    for index in df.index[missing_weather.any(axis=1)]:
+        average = _historical_weather_average(
+            weather, df.at[index, "State"], df.at[index, "Date"]
         )
+        missing_columns = missing_weather.columns[missing_weather.loc[index]]
+        df.loc[index, missing_columns] = average.loc[missing_columns].to_numpy()
+
     direction = np.deg2rad(df["WindDirDegrees"])
     df["WindDirSin"] = df["WindDirSin"].fillna(np.sin(direction))
     df["WindDirCos"] = df["WindDirCos"].fillna(np.cos(direction))
     df["WeatherMissingCount"] = df["WeatherMissingCount"].fillna(len(WEATHER_NUMERIC_COLUMNS))
     for event in WEATHER_EVENTS:
         column = f"Weather{event}"
-        df[column] = df[column].fillna(0).astype("int8")
+        df[column] = df[column].fillna(0)
     return df
 
 
