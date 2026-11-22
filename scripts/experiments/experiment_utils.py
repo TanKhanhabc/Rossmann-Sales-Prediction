@@ -34,7 +34,7 @@ def load_holdout():
     stores = get_stores()
     raw["Date"] = pd.to_datetime(raw["Date"], errors="raise")
     raw = raw.sort_values(["Date", "Store"], kind="stable").reset_index(drop=True)
-    cutoff = raw["Date"].max() - pd.Timedelta(days=VALIDATION_DAYS - 1)
+    cutoff = raw["Date"].max() - pd.offsets.Day(VALIDATION_DAYS - 1)
     fit_rows = raw.loc[raw["Date"].lt(cutoff)].copy()
     validation = raw.loc[raw["Date"].ge(cutoff)].copy()
     fit = fit_rows.loc[fit_rows["Open"].eq(1) & fit_rows["Sales"].gt(0)].copy()
@@ -119,6 +119,25 @@ def load_selected_model() -> dict:
     if "model" not in selected or "params" not in selected:
         raise ValueError(f"Invalid model selection file: {path}")
     return selected
+
+
+def load_all_models() -> dict[str, dict]:
+    """Load best params for ALL models saved by Exp 1.
+
+    Returns a dict keyed by model name, e.g.::
+
+        {
+            "lightgbm": {"params": {...}},
+            "random_forest": {"params": {...}},
+            ...
+        }
+    """
+    path = REPORTS_DIR / "all_models_params.json"
+    if not path.is_file():
+        raise FileNotFoundError(
+            f"Missing {path}. Run `python scripts/experiments/01_compare_models_cv.py` first."
+        )
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def write_json(path: Path, payload: dict) -> None:

@@ -1,0 +1,2 @@
+model,residual_oof_rows,residual_p10,residual_p90,validation_empirical_coverage,interval_method
+decision_tree,596131,-1524.7482050706758,2387.871405727723,0.892547512278454,"additive out-of-fold residual quantiles (P10, P90), clipped at zero"

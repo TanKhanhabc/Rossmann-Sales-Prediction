@@ -12,10 +12,10 @@
     "model__subsample": 0.9,
     "model__subsample_freq": 1
   },
-  "selection_rule": "simplest model within one SD of the lowest mean validation MAE",
-  "best_mean_val_mae": 1128.8081820951288,
-  "one_sd_threshold": 1193.4955061291987,
-  "validation_start": "2015-06-20",
-  "cv_splits": 3,
-  "cv_validation_metric": "MAE on original Sales scale"
+  "selection_rule": "LightGBM is the mandatory final model; selection is based on the lowest chronological-CV MAE and holdout evidence",
+  "holdout_mae": 862.86,
+  "holdout_r2": 0.8682592303696922,
+  "cv_val_mae": 1128.8081820951288,
+  "selection_reason": "LightGBM được chọn làm mô hình cuối vì có CV MAE thấp nhất (1128.81, so với holdout MAE 862.86); mô hình bắt được quan hệ phi tuyến và ổn định trên holdout 42 ngày.",
+  "prediction_model": "lightgbm"
 }

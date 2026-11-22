@@ -1,4 +1,11 @@
-"""Evaluate the selected model and one reference model on the 42-day holdout."""
+"""Evaluate ALL registered models on the 42-day holdout set.
+
+For each model the best hyper-parameters found in Exp 1 (all_models_params.json)
+are used.  Results are written to:
+  - reports/all_models_holdout_results.csv   – one row per model
+  - reports/all_models_holdout_results.json  – same data with bootstrap CIs
+  - reports/final_models.joblib              – fitted artifacts of every model
+"""
 
 from __future__ import annotations
 
@@ -11,7 +18,7 @@ import pandas as pd
 from experiment_utils import (
     REPORTS_DIR,
     load_holdout,
-    load_selected_model,
+    load_all_models,
     predict_sales,
     write_json,
 )
@@ -41,17 +48,20 @@ def bootstrap_intervals(actual: np.ndarray, predicted: np.ndarray) -> dict:
 
 
 def run() -> pd.DataFrame:
+    print(
+        "[EXP2/Giai đoạn 2] Đánh giá 5 mô hình độc lập trên holdout 42 ngày "
+        "bằng tham số tốt nhất từ Giai đoạn 1.",
+        flush=True,
+    )
     _, _, fit, validation, stores, cutoff = load_holdout()
-    selected = load_selected_model()
-    control_name = "ridge" if selected["model"] == "dummy" else "dummy"
-    models = {
-        selected["model"]: build_model(selected["model"], selected["params"]),
-        control_name: build_model(control_name),
-    }
+    all_models = load_all_models()   # dict: {model_name: {"params": {...}}}
     actual = validation["Sales"].to_numpy(dtype=float)
+
     output = []
     fitted_artifacts = {}
-    for name, model in models.items():
+    for name, info in all_models.items():
+        params = info.get("params", {})
+        model = build_model(name, params)
         model.fit(
             make_features(fit, stores),
             np.log1p(fit["Sales"].to_numpy(dtype=float)),
@@ -64,15 +74,15 @@ def run() -> pd.DataFrame:
         }
         output.append(row)
         fitted_artifacts[name] = model
-        print(f"[FINAL] {name}: {json.dumps(row, ensure_ascii=False)}", flush=True)
+        print(f"[HOLDOUT] {name}: MAE={row['mae']:.2f}", flush=True)
 
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
-    write_json(REPORTS_DIR / "final_test_results.json", {"results": output})
+    write_json(REPORTS_DIR / "all_models_holdout_results.json", {"results": output})
     pd.DataFrame(
         [
             {
                 "Model": row["Model"],
-                **{key: value for key, value in row.items() if key not in {"Model", "bootstrap"}},
+                **{k: v for k, v in row.items() if k not in {"Model", "bootstrap"}},
                 "MAE_CI95_Lower": row["bootstrap"]["mae_ci95"][0],
                 "MAE_CI95_Upper": row["bootstrap"]["mae_ci95"][1],
                 "RMSE_CI95_Lower": row["bootstrap"]["rmse_ci95"][0],
@@ -80,14 +90,12 @@ def run() -> pd.DataFrame:
             }
             for row in output
         ]
-    ).to_csv(REPORTS_DIR / "final_test_results.csv", index=False)
+    ).sort_values("mae").to_csv(REPORTS_DIR / "all_models_holdout_results.csv", index=False)
+
     joblib.dump(
         {
-            "selected_model": fitted_artifacts[selected["model"]],
-            "control_model": fitted_artifacts[control_name],
-            "selected_model_name": selected["model"],
-            "control_model_name": control_name,
-            "trained_through": (cutoff - pd.Timedelta(days=1)).date().isoformat(),
+            "models": fitted_artifacts,
+            "trained_through": (cutoff - pd.offsets.Day(1)).strftime("%Y-%m-%d"),
         },
         REPORTS_DIR / "final_models.joblib",
         compress=3,
@@ -101,7 +109,7 @@ def run() -> pd.DataFrame:
                 validation["Date"].min().date().isoformat(),
                 validation["Date"].max().date().isoformat(),
             ],
-            "note": "The 42-day holdout is excluded from fitting; both models are fit on all eligible pre-holdout training rows.",
+            "note": "The 42-day holdout is excluded from fitting; all models use best params from Exp 1.",
         },
     )
     return pd.DataFrame(output)

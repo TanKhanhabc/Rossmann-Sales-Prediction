@@ -1,4 +1,9 @@
-"""Tune each registered pipeline with chronological cross-validation."""
+"""Giai đoạn 1 - Đối sánh mô hình bằng chronological cross-validation.
+
+Mục tiêu: đo khả năng khái quát hóa theo thời gian trước khi xem kết quả holdout.
+Kết quả thực nghiệm được giữ nguyên; LightGBM được coi là mô hình ứng viên chính
+để đưa sang các giai đoạn phân tích và dự đoán.
+"""
 
 from __future__ import annotations
 
@@ -29,16 +34,12 @@ CV_N_JOBS = 1
 MAX_CONFIGURATIONS = 1
 RANDOM_STATE = 42
 
-COMPLEXITY = {
-    "dummy": 0,
-    "ridge": 1,
-    "decision_tree": 2,
-    "random_forest": 3,
-    "lightgbm": 4,
-}
-
-
 def run() -> pd.DataFrame:
+    print(
+        "[EXP1/Giai đoạn 1] Chuẩn bị dữ liệu và chạy chronological cross-validation "
+        "cho 5 mô hình.",
+        flush=True,
+    )
     _, _, fit, _, stores, cutoff = load_holdout()
     features, target = make_xy(fit, stores)
     cv = temporal_splits(fit["Date"])
@@ -106,19 +107,31 @@ def run() -> pd.DataFrame:
     best = table.iloc[0]
     threshold = float(best["Val_MAE"] + best["Val_MAE_SD"])
     eligible = table.loc[table["Val_MAE"].le(threshold)].copy()
-    selected = eligible.sort_values(
-        ["Model"], key=lambda column: column.map(COMPLEXITY)
-    ).iloc[0]
+    if "lightgbm" not in eligible["Model"].values:
+        raise RuntimeError(
+            "LightGBM không nằm trong 1-SD threshold của CV MAE; "
+            "không thể dùng làm mô hình cuối theo quy tắc sản xuất."
+        )
+    selected = table.loc[table["Model"].eq("lightgbm")].iloc[0]
     table["Within_1SD"] = table["Val_MAE"].le(threshold)
     table["Selected"] = table["Model"].eq(selected["Model"])
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
     table.to_csv(REPORTS_DIR / "cv_results.csv", index=False)
+
+    # Lưu best params của TẤT CẢ 5 model để Exp 2, 3, 4 chạy trên từng model
+    all_models_params = {
+        row["Model"]: {"params": json.loads(row["Best_Params"])}
+        for _, row in table.iterrows()
+    }
+    write_json(REPORTS_DIR / "all_models_params.json", all_models_params)
+
+    # Vẫn giữ selected_model.json (dùng sau khi đã chạy hết Exp 2-4)
     write_json(
         REPORTS_DIR / "selected_model.json",
         {
             "model": selected["Model"],
             "params": json.loads(selected["Best_Params"]),
-            "selection_rule": "simplest model within one SD of the lowest mean validation MAE",
+            "selection_rule": "LightGBM is within one SD of the lowest CV MAE and is selected as the mandatory final model",
             "best_mean_val_mae": float(best["Val_MAE"]),
             "one_sd_threshold": threshold,
             "validation_start": cutoff.date().isoformat(),
@@ -129,7 +142,8 @@ def run() -> pd.DataFrame:
     plot_results(table, threshold, REPORTS_DIR / "figures" / "cv_one_sd.png")
     print(
         f"[CV] Complete in {perf_counter() - run_started:.1f}s. "
-        "Wrote reports/cv_results.csv and reports/selected_model.json",
+        "Wrote reports/cv_results.csv, reports/all_models_params.json "
+        "and reports/selected_model.json",
         flush=True,
     )
     return table

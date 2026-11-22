@@ -5,5 +5,5 @@
     "2015-06-20",
     "2015-07-31"
   ],
-  "note": "The 42-day holdout is excluded from fitting; both models are fit on all eligible pre-holdout training rows."
+  "note": "The 42-day holdout is excluded from fitting; all models use best params from Exp 1."
 }

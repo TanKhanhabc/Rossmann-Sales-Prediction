@@ -11,6 +11,7 @@ EXTERNAL_PROCESSED_DIR = PROCESSED_DIR / "external"
 MERGED_DIR = ROOT / "data" / "merged"
 MODEL_FILE = ROOT / "models" / "rossmann_sales_lgbm.joblib"
 METRICS_FILE = ROOT / "results" / "evaluation_metrics.json"
+REPORTS_DIR = ROOT / "reports"
 
 
 def require_csv(name: str, directory: Path = PROCESSED_DIR) -> Path:

@@ -51,6 +51,28 @@ def test_test_stores_returns_only_test_stores_with_per_store_date_ranges(monkeyp
     ]
 
 
+def test_model_comparison_reads_project_reports():
+    response = client.get("/api/model-comparison")
+
+    assert response.status_code == 200
+    result = response.json()
+    assert result["best_model"] == "lightgbm"
+    assert len(result["models"]) == 5
+    lightgbm = next(row for row in result["models"] if row["name"] == "lightgbm")
+    dummy = next(row for row in result["stages"]["holdout"] if row["name"] == "dummy")
+    assert lightgbm["val_mae"] == 1128.80818
+    assert lightgbm["rmse"] == 1684.7993
+    assert len(result["stages"]["subgroups"]["store_type"]) == 4
+    assert len(result["stages"]["subgroups"]["day_of_week"]) == 7
+    assert len(result["stages"]["subgroups"]["promo"]) == 2
+    assert len(result["stages"]["feature_importance"]) == 20
+    holdout_lightgbm = next(row for row in result["stages"]["holdout"] if row["name"] == "lightgbm")
+    assert holdout_lightgbm["rmspe"] == 0.20636
+    assert holdout_lightgbm["wape"] == 0.14374
+    assert dummy["rmspe"] == 0.51291
+    assert dummy["wape"] == 0.31586
+
+
 def test_history_endpoint_is_removed():
     assert client.get("/api/history?store=1&days=5").status_code == 404
 

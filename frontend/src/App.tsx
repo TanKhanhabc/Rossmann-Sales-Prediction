@@ -1,12 +1,19 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Activity, ArrowRight, BarChart3, CalendarDays, CheckCircle2, ChevronDown, CircleHelp, Clock3, Database, Euro, FileText, Layers3, LoaderCircle, Search, ShieldCheck, Sparkles, TrendingUp, Wallet, XCircle, type LucideIcon } from 'lucide-react';
-import { api, type TestPredictions, type Model, type PredictInput, type PredictResult, type Store, type TestStore, type Summary } from './api';
+import { api, type TestPredictions, type Model, type ModelComparison, type PredictInput, type PredictResult, type Store, type TestStore, type Summary } from './api';
 const euros = (v: number) => '€' + new Intl.NumberFormat('de-DE', {maximumFractionDigits: 0}).format(v || 0);
 const numeral = (v: number) => new Intl.NumberFormat('en-US').format(v || 0);
 const shortDate = (v: string) => new Date(`${v}T12:00:00`).toLocaleDateString('vi-VN', {day: '2-digit', month: '2-digit'});
 const fmt = (v: number) => new Intl.NumberFormat('vi-VN', {maximumFractionDigits: 2}).format(v);
 const defaultForm: PredictInput = {store: 1, date: '2015-08-03', promo: 1, open: 1, state_holiday: '0', school_holiday: 0};
+const modelDisplayName = (name: string) => ({
+  lightgbm: 'LightGBM',
+  ridge: 'Ridge',
+  dummy: 'Dummy',
+  'decision_tree': 'Decision Tree',
+  'random_forest': 'Random Forest',
+}[name] ?? name);
 function StatCard({icon: Icon, label, value, note, accent = 'teal'}: {icon: LucideIcon;label:string;value:string;note:string;accent?:string}) {
  return <div className="stat-card"><div className={`stat-icon ${accent}`}><Icon size={20}/></div><div className="stat-label">{label}</div><div className="stat-value">{value}</div><div className="stat-note">{note}</div></div>;
 }
@@ -32,9 +39,11 @@ export default function App() {
  const [searchOpen,setSearchOpen] = useState(false);
  const [predictionStoreOpen,setPredictionStoreOpen] = useState(false);
  const [predictionStoreFilter,setPredictionStoreFilter] = useState('');
+ const [modelComparison,setModelComparison] = useState<ModelComparison|null>(null);
+ const [evaluationStage,setEvaluationStage] = useState<'cross_validation'|'holdout'|'error_analysis'|'feature_importance'|'selection'>('cross_validation');
  useEffect(() => {
-   Promise.all([api.summary(),api.stores(),api.testStores(),api.model()]).then(([s, st, tst, m]) => {
-     setSummary(s);setStores(st);setTestStores(tst);setModel(m);
+   Promise.all([api.summary(),api.stores(),api.testStores(),api.model(),api.modelComparison()]).then(([s, st, tst, m, mc]) => {
+     setSummary(s);setStores(st);setTestStores(tst);setModel(m);setModelComparison(mc);
      if(tst.length>0){setStore(tst[0].store);setStartDate(tst[0].start_date);setEndDate(tst[0].end_date);}
    }).catch(e=>setError(e.message));
  },[]);
@@ -68,6 +77,7 @@ export default function App() {
    [stores,predictionStoreFilter]
  );
  const forecastChartData = forecast?.points.map(p=>({date:shortDate(p.date), sales:p.predicted_sales, name:p.date}))??[];
+ const bestModelName = modelComparison?.best_model ? modelDisplayName(modelComparison.best_model) : null;
  async function submitPrediction(e: FormEvent) {
     e.preventDefault(); setPredicting(true);setPredictResult(null);setError('');
     try{setPredictResult(await api.predict(form));}catch(e){setError((e as Error).message);}finally{setPredicting(false);}
@@ -79,7 +89,7 @@ export default function App() {
    <a className="nav-link selected" href="#overview"><BarChart3 size={19}/> Tổng quan <span className="nav-dot"/></a>
    <a className="nav-link" href="#forecast"><TrendingUp size={19}/> Dự báo doanh thu</a>
    <a className="nav-link" href="#predict"><Sparkles size={19}/> Dự đoán tùy chỉnh</a>
-   <a className="nav-link" href="#model"><Layers3 size={19}/> Hiệu suất mô hình</a>
+   <a className="nav-link" href="#model-comparison"><Layers3 size={19}/> So sánh mô hình</a>
    <div className="nav-header second">DỮ LIỆU & BÁO CÁO</div>
    <a className="nav-link" href="#data"><Database size={19}/> Dataset Rossmann</a>
    <div className="sidebar-bottom"><div className="sidebar-help"><div className="help-top"><CircleHelp size={18}/> Thông tin dữ liệu</div><p>1.017.209 bản ghi từ năm 2013–2015. Đây là bộ dữ liệu lịch sử, không phải số liệu trực tiếp.</p></div><div className="sidebar-footer"><span className="live-dot"/> API / ML Connected <span className="version">v1.0</span></div></div>
@@ -158,6 +168,62 @@ export default function App() {
       {forecast && <div className="chart-footnote"><ShieldCheck size={16}/><span>Giai đoạn {forecast.start_date} – {forecast.end_date}. Lịch và đặc trưng được lấy tự động từ test.csv; doanh thu là dự đoán của mô hình đã huấn luyện, không phải giá trị thực tế.</span></div>}
     </section>
     <section className="panel dataset-panel" id="data"><div className="panel-header"><div><div className="heading-top">DATA TRANSPARENCY</div><h2>Ba bộ dữ liệu Rossmann</h2><p>Mô hình lấy dữ liệu trực tiếp từ các tệp CSV trong dự án.</p></div><span className="table-small-badge"><Database size={15}/> VERIFIED CSV</span></div><div className="dataset-grid"><div><span className="dataset-icon"><FileText size={19}/></span><strong>train.csv</strong><small>Dữ liệu huấn luyện</small><b>{summary?numeral(summary.train_rows):'...'}</b><span>9 cột · có Sales / Customers</span></div><div><span className="dataset-icon blue"><FileText size={19}/></span><strong>test.csv</strong><small>Ngày cần dự báo</small><b>{summary?numeral(summary.test_rows):'...'}</b><span>8 cột · không có Sales</span></div><div><span className="dataset-icon purple"><Database size={19}/></span><strong>store.csv</strong><small>Thuộc tính cửa hàng</small><b>{summary?numeral(summary.stores_total):'...'}</b><span>10 cột · join bằng Store</span></div></div><div className="dataset-footer"><span><CircleHelp size={16}/> 11 giá trị Open còn thiếu trong test.csv được suy luận theo thứ trong tuần.</span></div>    </section>
+    <section className="panel comparison-panel" id="model-comparison">
+      <div className="panel-header comparison-header">
+        <div><div className="heading-top">EXPERIMENT PIPELINE · EXP 1–5</div><h2>Quy trình đánh giá và chọn mô hình</h2><p>5 thí nghiệm chạy lần lượt: CV, Holdout, sai số, feature importance và tổng hợp lựa chọn.</p></div>
+        <span className="winner-chip"><CheckCircle2 size={16}/> Mô hình cuối: {bestModelName ?? 'Đang tải'}</span>
+      </div>
+      <div className="experiment-track">
+        {([
+          ['cross_validation','01','Cross-validation'],
+          ['holdout','02','Holdout 42 ngày'],
+          ['error_analysis','03','Sai số & khoảng dự đoán'],
+          ['feature_importance','04','Permutation importance'],
+          ['selection','05','Chọn mô hình cuối'],
+        ] as const).map(([stage,label]) => (
+          <button key={stage} type="button" className={evaluationStage===stage?'active':''} onClick={()=>setEvaluationStage(stage)}><span>{label}</span><strong>{stage==='cross_validation'?'Cross-validation':stage==='holdout'?'Holdout 42 ngày':stage==='error_analysis'?'Sai số & khoảng dự đoán':stage==='feature_importance'?'Permutation importance':'Chọn mô hình cuối'}</strong></button>
+        ))}
+      </div>
+      {evaluationStage==='cross_validation' && <div className="stage-content">
+        <div className="stage-description"><strong>Thí nghiệm 1 · Tuning & chronological CV</strong><span>5 mô hình · 3 fold · holdout 42 ngày loại khỏi fitting</span></div>
+        <div className="experiment-metrics"><div><span>CHIẾN LƯỢC CV</span><strong>Chronological</strong><small>Không chia ngẫu nhiên</small></div><div><span>SỐ FOLD</span><strong>3</strong><small>Theo thứ tự thời gian</small></div><div><span>THANG ĐO</span><strong>MAE</strong><small>Trên Sales gốc</small></div></div>
+        <div className="comparison-table-wrap"><table className="comparison-table stage-table"><thead><tr><th>Mô hình</th><th>Train MAE</th><th>CV MAE</th><th>± SD</th><th>CV RMSE</th><th>CV R²</th><th>Quy tắc 1-SD</th></tr></thead>
+          <tbody>{(modelComparison?.stages.cross_validation ?? []).map(row=><tr key={row.name} className={row.selected?'winner-row':''}><td><span className={row.selected?'winner-mark':'model-mark'}/>{modelDisplayName(row.name)}{row.selected&&<em>Được chọn</em>}</td><td>{euros(row.train_mae)}</td><td>{euros(row.val_mae)}</td><td>{euros(row.val_mae_sd)}</td><td>{euros(row.rmse)}</td><td>{row.r2.toFixed(4)}</td><td><span className={row.within_1sd?'eligibility yes':'eligibility'}>{row.within_1sd?'Đạt':'Ngoài ngưỡng'}</span></td></tr>)}</tbody>
+        </table></div>
+      </div>}
+      {evaluationStage==='holdout' && <div className="stage-content">
+        <div className="stage-description"><strong>Thí nghiệm 2 · Holdout độc lập 42 ngày</strong><span>Fit trên dữ liệu trước holdout · bootstrap 1.000 lần · tham số tốt nhất từ Exp 1</span></div>
+        <div className="experiment-metrics compact"><div><span>DÒNG FIT</span><strong>{typeof modelComparison?.metadata?.fit_rows==='number'?numeral(modelComparison.metadata.fit_rows):'—'}</strong><small>trước holdout</small></div><div><span>DÒNG HOLDOUT</span><strong>{typeof modelComparison?.metadata?.validation_rows==='number'?numeral(modelComparison.metadata.validation_rows):'—'}</strong><small>{modelComparison?.metadata?.validation_dates?.[0]??'—'} → {modelComparison?.metadata?.validation_dates?.[1]??'—'}</small></div><div><span>BOOTSTRAP</span><strong>1.000</strong><small>95% confidence interval</small></div></div>
+        <div className="comparison-table-wrap"><table className="comparison-table stage-table"><thead><tr><th>Mô hình</th><th>MAE</th><th>MAE 95% CI</th><th>RMSE</th><th>RMSE 95% CI</th><th>RMSPE</th><th>WAPE</th></tr></thead>
+          <tbody>{(modelComparison?.stages.holdout ?? []).map(row=><tr key={row.name} className={row.name===modelComparison?.best_model?'winner-row':''}><td><span className={row.name===modelComparison?.best_model?'winner-mark':'model-mark'}/>{modelDisplayName(row.name)}{row.name===modelComparison?.best_model&&<em>Tốt nhất</em>}</td><td>{euros(row.mae)}</td><td>{euros(row.mae_ci95[0])} – {euros(row.mae_ci95[1])}</td><td>{euros(row.rmse)}</td><td>{euros(row.rmse_ci95[0])} – {euros(row.rmse_ci95[1])}</td><td>{(row.rmspe*100).toFixed(2)}%</td><td>{(row.wape*100).toFixed(2)}%</td></tr>)}</tbody>
+        </table></div>
+      </div>}
+      {evaluationStage==='error_analysis' && <div className="stage-content">
+        <div className="stage-description"><strong>Thí nghiệm 3 · Sai số theo nhóm & khoảng dự đoán</strong><span>Residual P10–P90 từ out-of-fold · phân tách StoreType, DayOfWeek và Promo</span></div>
+        {(modelComparison?.interval_summary?.length ?? 0)>0 && modelComparison?.interval_summary?.map((row,i)=><div className="interval-summary" key={i}><div><span>{String(row.model).toUpperCase()}</span><strong>{typeof row.validation_empirical_coverage==='number'?`${(row.validation_empirical_coverage*100).toFixed(2)}%`:'—'}</strong><small>độ phủ P10–P90</small></div><div><span>P10 residual</span><strong>{typeof row.residual_p10==='number'?euros(row.residual_p10):'—'}</strong><small>{numeral(Number(row.residual_oof_rows)||0)} OOF residuals</small></div><div><span>P90 residual</span><strong>{typeof row.residual_p90==='number'?euros(row.residual_p90):'—'}</strong><small>clipped at zero</small></div></div>)}
+        <div className="subgroup-grid">
+          {([
+            ['store_type','Loại cửa hàng'],
+            ['day_of_week','Ngày trong tuần'],
+            ['promo','Khuyến mãi'],
+          ] as const).map(([key,title])=>{
+            const rows=modelComparison?.stages.subgroups[key] ?? [];
+            return <div className="subgroup-card" key={key}><h3>{title}</h3><div className="comparison-table-wrap"><table className="comparison-table subgroup-table"><thead><tr>{rows[0] && Object.keys(rows[0]).map(column=><th key={column}>{column==='StoreType'||column==='store_type'?'Loại':column==='DayOfWeek'||column==='day_of_week'?'Thứ':column==='Promo'||column==='promo'?'Promo':column==='MAE'?'MAE':column==='Rows'?'Số dòng':column}</th>)}</tr></thead><tbody>{rows.map((row,i)=><tr key={i}>{Object.entries(row).map(([column,value])=><td key={column}>{column==='MAE'?euros(Number(value)):String(value)}</td>)}</tr>)}</tbody></table></div></div>;
+          })}
+        </div>
+        {(modelComparison?.stages.top_errors?.length ?? 0)>0 && <div className="top-errors"><h3>10 sai số lớn nhất · LightGBM</h3><div className="comparison-table-wrap"><table className="comparison-table subgroup-table"><thead><tr><th>Ngày</th><th>Cửa hàng</th><th>Loại</th><th>Thực tế</th><th>Dự đoán</th><th>Sai số tuyệt đối</th></tr></thead><tbody>{modelComparison?.stages.top_errors?.slice(0,10).map((row,i)=><tr key={i}><td>{String(row.Date)}</td><td>{String(row.Store)}</td><td>{String(row.StoreType)}</td><td>{euros(Number(row.Sales)||0)}</td><td>{euros(Number(row.Prediction)||0)}</td><td><strong>{euros(Number(row.Absolute_Error)||0)}</strong></td></tr>)}</tbody></table></div></div>}
+      </div>}
+      {evaluationStage==='feature_importance' && <div className="stage-content">
+        <div className="stage-description"><strong>Thí nghiệm 4 · Permutation feature importance</strong><span>Cửa hàng mở · tối đa 20.000 dòng · 10 hoán vị · mức tăng MAE trên Sales</span></div>
+        <div className="importance-layout">{(modelComparison?.stages.feature_importance ?? []).slice(0,10).map((row,i)=>{const max=modelComparison?.stages.feature_importance?.[0]?.importance_mae_increase||1;const width=Math.max(3,(row.importance_mae_increase/max)*100);return <div className="importance-row" key={row.feature}><span className="importance-rank">{i+1}</span><div className="importance-name"><strong>{row.feature}</strong><span>± {euros(row.importance_sd)}</span></div><div className="importance-track"><span style={{width:`${width}%`}}/></div><strong className="importance-value">{euros(row.importance_mae_increase)}</strong></div>;})}</div>
+      </div>}
+      {evaluationStage==='selection' && <div className="stage-content">
+        <div className="stage-description"><strong>Thí nghiệm 5 · Tổng hợp và chọn mô hình cuối</strong><span>Ghép CV, holdout, prediction interval và permutation importance</span></div>
+        <div className="selection-hero"><div className="selection-badge"><CheckCircle2 size={24}/></div><div><span>MÔ HÌNH ĐƯỢC CHỌN</span><h3>{bestModelName ?? '—'}</h3><p>{modelComparison?.selected_reason || 'LightGBM được chọn làm mô hình sản xuất theo evidence thực nghiệm.'}</p></div></div>
+        <div className="comparison-table-wrap"><table className="comparison-table stage-table"><thead><tr><th>Mô hình</th><th>CV MAE</th><th>Holdout MAE</th><th>Holdout R²</th><th>P10–P90</th><th>Top feature</th><th>Kết luận</th></tr></thead><tbody>{(modelComparison?.stages.selection ?? []).map(row=>{const name=String(row.Model||'');const selected=Boolean(row.Selected);return <tr key={name} className={selected?'winner-row':''}><td><span className={selected?'winner-mark':'model-mark'}/>{modelDisplayName(name)}{selected&&<em>Đã chọn</em>}</td><td>{euros(Number(row.cv_val_mae)||0)}</td><td>{euros(Number(row.holdout_mae)||0)}</td><td>{typeof row.holdout_r2==='number'?row.holdout_r2.toFixed(4):'—'}</td><td>{typeof row.pi_coverage==='number'?`${(row.pi_coverage*100).toFixed(2)}%`:'—'}</td><td>{String(row.top_feature||'—')}</td><td>{selected?'Mô hình cuối':row.Within_1SD?'Trong 1-SD':'Đối chứng'}</td></tr>;})}</tbody></table></div>
+      </div>}
+      <div className="comparison-source"><ShieldCheck size={15}/><span>Báo cáo mới nhất: <code>cv_results.csv</code>, <code>all_models_holdout_results.csv</code>, <code>subgroup_mae_*.csv</code>, <code>prediction_interval_summary.csv</code>, <code>permutation_importance.csv</code>, <code>top_10_errors.csv</code> và <code>selection_summary.csv</code>.</span></div>
+    </section>
     <footer>Rossmann Sales Intelligence · FastAPI + LightGBM + React <span>Không phải dữ liệu Rossmann thời gian thực · EUR</span></footer>
    </section>
   </main>

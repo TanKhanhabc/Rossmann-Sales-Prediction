@@ -82,6 +82,26 @@ Mô hình đã được train trên CSV thật và kèm trong ZIP; bạn không 
 - **Baseline** lịch sử Store × DayOfWeek × Promo: MAE **639,99 EUR**, RMSE **1.028,21 EUR**.
 - Mô hình cuối đã được train lại với toàn bộ 844.338 dòng cửa hàng mở có doanh thu > 0. Metrics đo trên holdout chỉ áp dụng cho mô hình trước khi train lại.
 
+### Quy trình 5 giai đoạn thực nghiệm
+
+Khi cần chạy bộ thực nghiệm so sánh mô hình từ thư mục gốc:
+
+```powershell
+py scripts/experiments/01_compare_models_cv.py
+py scripts/experiments/02_evaluate_holdout.py
+py scripts/experiments/03_analyze_errors.py
+py scripts/experiments/04_feature_importance.py
+py scripts/experiments/05_select_best_model.py
+```
+
+1. **Giai đoạn 1 — Cross-validation:** đánh giá 5 mô hình theo các fold thời gian.
+2. **Giai đoạn 2 — Holdout:** chấm điểm cùng tập 42 ngày bằng tham số tốt nhất từ giai đoạn 1.
+3. **Giai đoạn 3 — Sai số:** phân tích MAE theo nhóm cửa hàng/ngày/khuyến mãi và khoảng dự đoán.
+4. **Giai đoạn 4 — Giải thích:** đo permutation importance trên holdout.
+5. **Giai đoạn 5 — Chốt mô hình:** tổng hợp kết quả và chọn **LightGBM** làm mô hình cuối.
+
+LightGBM được giữ làm mô hình sản xuất vì nó đạt CV MAE thấp nhất trong bảng so sánh hiện tại và phù hợp quan hệ phi tuyến của dữ liệu. Ridge đạt holdout MAE thấp hơn một số mô hình khác, nhưng CV MAE và RMSE kém ổn định hơn nên không được chọn làm mô hình cuối. Kết quả holdout/CV hiện có không bị thay đổi khi chốt mô hình.
+
 ## 4. Run Docker
 Đã có mô hình và kết quả trong ZIP. Từ thư mục gốc:
 ```powershell
