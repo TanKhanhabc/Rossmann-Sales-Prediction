@@ -2,16 +2,19 @@
 
 ## 1. Executive Summary
 
-- Dữ liệu train bao gồm **1,017,209** bản ghi từ **2013-01-01** đến **2015-07-31** và phản ánh mô hình kinh doanh bán lẻ theo cửa hàng/ngày.
+- EDA được chạy trực tiếp trên dữ liệu raw: train **1,017,209** bản ghi từ **2013-01-01** đến **2015-07-31**, test **41,088** bản ghi và store **1,115** cửa hàng.
 - Tổng doanh thu trong train đạt **5,873,180,623 EUR**, với doanh thu trung bình khi cửa hàng mở là **6,955.51 EUR/ngày**.
-- Tỷ lệ cửa hàng mở thực tế là **83.0%**, cho thấy dữ liệu tương đối ổn định và hấp dẫn cho mô hình chuỗi thời gian.
+- Tỷ lệ cửa hàng mở thực tế là **83.0%**.
 - Khuyến mãi tạo ra hiệu ứng doanh thu rõ rệt, khoảng **3,585 EUR/ngày** chênh lệch trung bình giữa ngày có và không có promo.
+- Kiểm tra khóa: train có **0** dòng tham gia trùng `(Store, Date)`; test có **0** dòng có `Id` trùng.
 
 ## 2. Dataset Overview
 
-- Train: **1,017,209** hàng; Test: **41,088** hàng; Store: **1,115** cửa hàng.
-- Test bao phủ từ **2015-08-01** đến **2015-09-17** với **856** cửa hàng được quan sát.
-- Khuyết thiếu dữ liệu cần xử lý ở `CompetitionOpenSinceMonth`, `CompetitionOpenSinceYear`, `Promo2SinceWeek`, `Promo2SinceYear`, `PromoInterval` và `CompetitionDistance`.
+- Train: **1,017,209** hàng, **1,115** cửa hàng. Test: **41,088** hàng, **856** cửa hàng.
+- Test bao phủ từ **2015-08-01** đến **2015-09-17**.
+- Test raw có **11** giá trị `Open` thiếu; train raw không thay đổi.
+- Không có bước điền thiếu, chuyển đổi hoặc merge được áp dụng trong script EDA raw.
+- Chi tiết các ô thiếu theo từng file raw được tổng hợp trong mục 5.
 
 ## 3. Visual Insights
 
@@ -35,12 +38,24 @@
 
 ![Missing store data](./eda_charts/missing_store_data.png)
 
+### 3.6. Ảnh hưởng của trạng thái mở cửa
+
+![Open effect](./eda_charts/open_effect.png)
+
+### 3.7. Ảnh hưởng của StateHoliday
+
+![StateHoliday sales](./eda_charts/state_holiday_sales.png)
+
+### 3.8. Dữ liệu thiếu trực tiếp trên các file raw
+
+![Raw missing data](./eda_charts/raw_missing_data.png)
+
 ## 4. Business Findings
 
-- **Thứ Hai** và **Thứ Ba** có mức doanh thu cao hơn các ngày còn lại, cho thấy lịch bán hàng có tính chu kỳ rõ ràng.
+- Doanh thu có tính chu kỳ rõ ràng theo ngày trong tuần.
 - **Promo** là biến có tác động lớn tới doanh thu và nên được giữ trong mô hình dưới dạng đặc trưng quan trọng.
-- Một số trường liên quan đến thời gian tham gia của đối thủ cạnh tranh và lịch promo 2 không có đủ dữ liệu, cần xử lý bằng cách điền trung vị hoặc tạo cờ `missing`.
-- Trung bình doanh thu trong giai đoạn cuối năm có xu hướng tăng mạnh, phù hợp với chiến lược ra quyết định theo mùa.
+- Các dòng `Open=0` tạo doanh thu bằng 0 và phải được xử lý khác biệt, không chỉ lấy trung bình toàn bộ train.
+- Giá trị thiếu trong `store.csv` phản ánh không áp dụng hoặc thông tin chưa biết; không nên mặc nhiên coi là số không.
 
 ## 5. Summary Tables
 
@@ -83,6 +98,34 @@
 | CompetitionOpenSinceYear  |           354 |
 | CompetitionOpenSinceMonth |           354 |
 | CompetitionDistance       |             3 |
+
+### 5.5. Trạng thái mở cửa
+
+|   Open |   Avg_Sales |   Median_Sales |   Rows |
+|-------:|------------:|---------------:|-------:|
+|      0 |        0    |              0 | 172817 |
+|      1 |     6955.51 |           6369 | 844392 |
+
+### 5.6. StateHoliday
+
+| StateHoliday      |   Avg_Sales |   Median_Sales |   Rows |
+|:------------------|------------:|---------------:|-------:|
+| Giáng sinh        |      168.73 |              0 |   4100 |
+| Không nghỉ        |     5947.48 |           5849 | 986159 |
+| Lễ Phục sinh      |      214.31 |              0 |   6690 |
+| Ngày lễ công cộng |      290.74 |              0 |  20260 |
+
+### 5.7. Tất cả dữ liệu thiếu trong raw
+
+| Dataset   | Field                     |   MissingRows |   MissingRate |
+|:----------|:--------------------------|--------------:|--------------:|
+| store     | Promo2SinceWeek           |           544 |        48.789 |
+| store     | Promo2SinceYear           |           544 |        48.789 |
+| store     | PromoInterval             |           544 |        48.789 |
+| store     | CompetitionOpenSinceMonth |           354 |        31.749 |
+| store     | CompetitionOpenSinceYear  |           354 |        31.749 |
+| test      | Open                      |            11 |         0.027 |
+| store     | CompetitionDistance       |             3 |         0.269 |
 
 ## 6. Recommended Next Steps
 

@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import json
-import sys
 from pathlib import Path
 
 try:
@@ -18,8 +17,7 @@ except ModuleNotFoundError as exc:
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT / "backend"))
-from app.services.data_service import get_train, get_test, get_stores, overview
+RAW_DIR = ROOT / "data" / "raw"
 
 
 def _markdown(frame: pd.DataFrame, *, index: bool = False) -> str:
@@ -37,7 +35,12 @@ def _save_figure(chart_dir: Path, name: str, fig: plt.Figure) -> str:
     return f"./eda_charts/{name}"
 
 
-def _build_visuals(train: pd.DataFrame, raw_store: pd.DataFrame, chart_dir: Path) -> dict[str, str]:
+def _build_visuals(
+    train: pd.DataFrame,
+    test: pd.DataFrame,
+    raw_store: pd.DataFrame,
+    chart_dir: Path,
+) -> dict[str, str]:
     monthly = (
         train.assign(Month=train.Date.dt.to_period("M").astype(str))
         .groupby("Month")
@@ -108,12 +111,75 @@ def _build_visuals(train: pd.DataFrame, raw_store: pd.DataFrame, chart_dir: Path
     plt.xticks(rotation=45)
     missing_path = _save_figure(chart_dir, "missing_store_data.png", fig)
 
+    open_sales = (
+        train.groupby("Open", observed=True)["Sales"]
+        .agg(["mean", "median", "count"])
+        .rename(columns={"mean": "Avg_Sales", "median": "Median_Sales", "count": "Rows"})
+        .reset_index()
+    )
+    fig, ax = plt.subplots(figsize=(8, 5))
+    labels = open_sales["Open"].map({0: "Đóng cửa", 1: "Mở cửa"})
+    ax.bar(labels, open_sales["Avg_Sales"], color=["#A0AEC0", "#54A24B"])
+    ax.set_title("Doanh thu trung bình theo trạng thái mở cửa", fontsize=12, fontweight="bold")
+    ax.set_xlabel("Open")
+    ax.set_ylabel("Doanh thu trung bình (EUR)")
+    open_path = _save_figure(chart_dir, "open_effect.png", fig)
+
+    holiday_sales = (
+        train.assign(
+            StateHolidayLabel=train["StateHoliday"].astype(str).map(
+                {"0": "Không nghỉ", "a": "Ngày lễ công cộng", "b": "Lễ Phục sinh", "c": "Giáng sinh"}
+            ).fillna("Khác")
+        )
+        .groupby("StateHolidayLabel", observed=True)["Sales"]
+        .agg(["mean", "count"])
+        .rename(columns={"mean": "Avg_Sales", "count": "Rows"})
+        .reset_index()
+    )
+    fig, ax = plt.subplots(figsize=(10, 5))
+    ax.bar(holiday_sales["StateHolidayLabel"], holiday_sales["Avg_Sales"], color="#9467BD")
+    ax.set_title("Doanh thu trung bình theo StateHoliday", fontsize=12, fontweight="bold")
+    ax.set_xlabel("Loại ngày lễ")
+    ax.set_ylabel("Doanh thu trung bình (EUR)")
+    plt.xticks(rotation=20)
+    holiday_path = _save_figure(chart_dir, "state_holiday_sales.png", fig)
+
+    missing_frames = {}
+    for name, frame in (("train", train), ("test", test), ("store", raw_store)):
+        missing_frames[name] = (
+            frame.isna().sum()
+            .rename("MissingRows")
+            .loc[lambda s: s > 0]
+            .sort_values(ascending=False)
+        )
+    missing_labels = []
+    missing_values = []
+    for name, series in missing_frames.items():
+        for column, count in series.items():
+            missing_labels.append(f"{name}.{column}")
+            missing_values.append(int(count))
+    fig, ax = plt.subplots(figsize=(12, 6))
+    if missing_values:
+        bars = ax.bar(missing_labels, missing_values, color="#B279A2")
+        ax.bar_label(bars, labels=[f"{v}" for v in missing_values], padding=3, rotation=90)
+    else:
+        ax.text(0.5, 0.5, "Không có dữ liệu thiếu", ha="center", va="center", transform=ax.transAxes)
+        ax.set_yticks([])
+    ax.set_title("Dữ liệu thiếu trực tiếp trong các file raw", fontsize=12, fontweight="bold")
+    ax.set_xlabel("Dataset.Cột")
+    ax.set_ylabel("Số ô thiếu")
+    plt.xticks(rotation=45, ha="right")
+    raw_missing_path = _save_figure(chart_dir, "raw_missing_data.png", fig)
+
     return {
         "monthly": monthly_path,
         "weekday": weekday_path,
         "promo": promo_path,
         "top_stores": top_store_path,
         "missing": missing_path,
+        "open": open_path,
+        "holiday": holiday_path,
+        "raw_missing": raw_missing_path,
     }
 
 
@@ -148,9 +214,11 @@ def _write_notebook() -> None:
                     "import matplotlib.pyplot as plt\n",
                     "\n",
                     "root = Path.cwd().resolve().parents[1]\n",
-                    "train = pd.read_csv(root / 'data/processed/train.csv', parse_dates=['Date'], low_memory=False)\n",
-                    "store = pd.read_csv(root / 'data/processed/store.csv', low_memory=False)\n",
+                    "train = pd.read_csv(root / 'data/raw/train.csv', parse_dates=['Date'], low_memory=False)\n",
+                    "test = pd.read_csv(root / 'data/raw/test.csv', parse_dates=['Date'], low_memory=False)\n",
+                    "store = pd.read_csv(root / 'data/raw/store.csv', low_memory=False)\n",
                     "print('train shape:', train.shape)\n",
+                    "print('test shape:', test.shape)\n",
                     "print('store shape:', store.shape)\n",
                     "train.head()\n"
                 ],
@@ -223,6 +291,46 @@ def _write_notebook() -> None:
                 "metadata": {},
                 "outputs": [],
                 "source": [
+                    "open_effect = train.groupby('Open')['Sales'].agg(['mean', 'median', 'count']).reset_index()\n",
+                    "open_effect['OpenLabel'] = open_effect['Open'].map({0: 'Đóng cửa', 1: 'Mở cửa'})\n",
+                    "fig, ax = plt.subplots(figsize=(8, 5))\n",
+                    "ax.bar(open_effect['OpenLabel'], open_effect['mean'], color=['#A0AEC0', '#54A24B'])\n",
+                    "ax.set_title('Doanh thu trung bình theo trạng thái mở cửa')\n",
+                    "ax.set_xlabel('Open')\n",
+                    "ax.set_ylabel('Doanh thu trung bình (EUR)')\n",
+                    "plt.tight_layout()\n",
+                    "fig\n"
+                ],
+            },
+            {
+                "cell_type": "code",
+                "execution_count": None,
+                "metadata": {},
+                "outputs": [],
+                "source": [
+                    "holiday = (\n",
+                    "    train.assign(StateHolidayLabel=train['StateHoliday'].astype(str).replace({\n",
+                    "        '0': 'Không nghỉ', 'a': 'Ngày lễ công cộng',\n",
+                    "        'b': 'Lễ Phục sinh', 'c': 'Giáng sinh'\n",
+                    "    }))\n",
+                    "    .groupby('StateHolidayLabel')['Sales'].agg(['mean', 'median', 'count']).reset_index()\n",
+                    ")\n",
+                    "fig, ax = plt.subplots(figsize=(10, 5))\n",
+                    "ax.bar(holiday['StateHolidayLabel'], holiday['mean'], color='#9467BD')\n",
+                    "ax.set_title('Doanh thu trung bình theo StateHoliday')\n",
+                    "ax.set_xlabel('Loại ngày lễ')\n",
+                    "ax.set_ylabel('Doanh thu trung bình (EUR)')\n",
+                    "plt.xticks(rotation=20)\n",
+                    "plt.tight_layout()\n",
+                    "fig\n"
+                ],
+            },
+            {
+                "cell_type": "code",
+                "execution_count": None,
+                "metadata": {},
+                "outputs": [],
+                "source": [
                     "missing = store.isna().sum().sort_values(ascending=False)\n",
                     "missing = missing[missing > 0]\n",
                     "fig, ax = plt.subplots(figsize=(10, 5))\n",
@@ -260,13 +368,15 @@ def _write_notebook() -> None:
 
 
 def run() -> None:
-    train, test, store = get_train(), get_test(), get_stores()
-    a = overview()
-    raw_store = pd.read_csv(ROOT / "data" / "raw" / "store.csv", low_memory=False)
+    train = pd.read_csv(RAW_DIR / "train.csv", parse_dates=["Date"], low_memory=False)
+    test = pd.read_csv(RAW_DIR / "test.csv", parse_dates=["Date"], low_memory=False)
+    raw_store = pd.read_csv(RAW_DIR / "store.csv", low_memory=False)
+    open_days_records = int(train["Open"].fillna(0).sum())
+    mean_sales_open = float(train.loc[train["Open"].eq(1), "Sales"].mean())
     chart_dir = ROOT / "results" / "eda_charts"
     chart_dir.mkdir(parents=True, exist_ok=True)
 
-    charts = _build_visuals(train, raw_store, chart_dir)
+    charts = _build_visuals(train, test, raw_store, chart_dir)
     month = (
         train.assign(Month=train.Date.dt.to_period("M").astype(str))
         .groupby("Month")
@@ -306,22 +416,65 @@ def run() -> None:
         promo_effect.loc[promo_effect["Promo"] == 1, "Avg_Sales"].iat[0]
         - promo_effect.loc[promo_effect["Promo"] == 0, "Avg_Sales"].iat[0]
     )
+    open_effect = (
+        train.groupby("Open", observed=True)["Sales"]
+        .agg(["mean", "median", "count"])
+        .rename(columns={"mean": "Avg_Sales", "median": "Median_Sales", "count": "Rows"})
+        .reset_index()
+    )
+    state_holiday_effect = (
+        train.assign(
+            StateHoliday=train["StateHoliday"].astype(str).replace({
+                "0": "Không nghỉ",
+                "a": "Ngày lễ công cộng",
+                "b": "Lễ Phục sinh",
+                "c": "Giáng sinh",
+            })
+        )
+        .groupby("StateHoliday", observed=True)["Sales"]
+        .agg(["mean", "median", "count"])
+        .rename(columns={"mean": "Avg_Sales", "median": "Median_Sales", "count": "Rows"})
+        .reset_index()
+    )
+    missing_raw = []
+    for dataset_name, frame in (("train", train), ("test", test), ("store", raw_store)):
+        for column, count in frame.isna().sum().items():
+            if count:
+                missing_raw.append({
+                    "Dataset": dataset_name,
+                    "Field": str(column),
+                    "MissingRows": int(count),
+                    "MissingRate": float(count / len(frame)),
+                })
+    missing_raw_table = pd.DataFrame(missing_raw).sort_values(
+        ["MissingRows", "Dataset", "Field"], ascending=[False, True, True]
+    )
+    duplicate_train_keys = int(
+        train.duplicated(["Store", "Date"], keep=False).sum()
+    )
+    duplicate_test_ids = int(test["Id"].duplicated(keep=False).sum())
+    train_store_count = int(train["Store"].nunique())
+    test_store_count = int(test["Store"].nunique())
+    missing_test_open = int(test["Open"].isna().sum())
 
     report = [
         "# Rossmann Sales EDA Report",
         "",
         "## 1. Executive Summary",
         "",
-        "- Dữ liệu train bao gồm **1,017,209** bản ghi từ **2013-01-01** đến **2015-07-31** và phản ánh mô hình kinh doanh bán lẻ theo cửa hàng/ngày.",
-        f"- Tổng doanh thu trong train đạt **{int(train.Sales.sum()):,.0f} EUR**, với doanh thu trung bình khi cửa hàng mở là **{a['mean_sales_open']:,.2f} EUR/ngày**.",
-        f"- Tỷ lệ cửa hàng mở thực tế là **{a['open_days_records'] / len(train):.1%}**, cho thấy dữ liệu tương đối ổn định và hấp dẫn cho mô hình chuỗi thời gian.",
+        f"- EDA được chạy trực tiếp trên dữ liệu raw: train **{len(train):,}** bản ghi từ **{train.Date.min().date()}** đến **{train.Date.max().date()}**, test **{len(test):,}** bản ghi và store **{len(raw_store):,}** cửa hàng.",
+        f"- Tổng doanh thu trong train đạt **{int(train.Sales.sum()):,.0f} EUR**, với doanh thu trung bình khi cửa hàng mở là **{mean_sales_open:,.2f} EUR/ngày**.",
+        f"- Tỷ lệ cửa hàng mở thực tế là **{open_days_records / len(train):.1%}**.",
         f"- Khuyến mãi tạo ra hiệu ứng doanh thu rõ rệt, khoảng **{promo_gap:,.0f} EUR/ngày** chênh lệch trung bình giữa ngày có và không có promo.",
+        f"- Kiểm tra khóa: train có **{duplicate_train_keys:,}** dòng tham gia trùng `(Store, Date)`; test có **{duplicate_test_ids:,}** dòng có `Id` trùng.",
         "",
         "## 2. Dataset Overview",
         "",
-        f"- Train: **{len(train):,}** hàng; Test: **{len(test):,}** hàng; Store: **{len(store):,}** cửa hàng.",
-        f"- Test bao phủ từ **{a['test_start']}** đến **{a['test_end']}** với **{test.Store.nunique():,}** cửa hàng được quan sát.",
-        f"- Khuyết thiếu dữ liệu cần xử lý ở `CompetitionOpenSinceMonth`, `CompetitionOpenSinceYear`, `Promo2SinceWeek`, `Promo2SinceYear`, `PromoInterval` và `CompetitionDistance`.",
+        f"- Train: **{len(train):,}** hàng, **{train_store_count:,}** cửa hàng. Test: **{len(test):,}** hàng, **{test_store_count:,}** cửa hàng.",
+        f"- Test bao phủ từ **{test.Date.min().date()}** đến **{test.Date.max().date()}**.",
+        f"- Test raw có **{missing_test_open:,}** giá trị `Open` thiếu; train raw không thay đổi.",
+        "- Không có bước điền thiếu, chuyển đổi hoặc merge được áp dụng trong script EDA raw.",
+        "- Chi tiết các ô thiếu theo từng file raw được tổng hợp trong mục 5.",
         "",
         "## 3. Visual Insights",
         "",
@@ -345,12 +498,24 @@ def run() -> None:
         "",
         f"![Missing store data]({charts['missing']})",
         "",
+        "### 3.6. Ảnh hưởng của trạng thái mở cửa",
+        "",
+        f"![Open effect]({charts['open']})",
+        "",
+        "### 3.7. Ảnh hưởng của StateHoliday",
+        "",
+        f"![StateHoliday sales]({charts['holiday']})",
+        "",
+        "### 3.8. Dữ liệu thiếu trực tiếp trên các file raw",
+        "",
+        f"![Raw missing data]({charts['raw_missing']})",
+        "",
         "## 4. Business Findings",
         "",
-        "- **Thứ Hai** và **Thứ Ba** có mức doanh thu cao hơn các ngày còn lại, cho thấy lịch bán hàng có tính chu kỳ rõ ràng.",
+        "- Doanh thu có tính chu kỳ rõ ràng theo ngày trong tuần.",
         "- **Promo** là biến có tác động lớn tới doanh thu và nên được giữ trong mô hình dưới dạng đặc trưng quan trọng.",
-        "- Một số trường liên quan đến thời gian tham gia của đối thủ cạnh tranh và lịch promo 2 không có đủ dữ liệu, cần xử lý bằng cách điền trung vị hoặc tạo cờ `missing`.",
-        "- Trung bình doanh thu trong giai đoạn cuối năm có xu hướng tăng mạnh, phù hợp với chiến lược ra quyết định theo mùa.",
+        "- Các dòng `Open=0` tạo doanh thu bằng 0 và phải được xử lý khác biệt, không chỉ lấy trung bình toàn bộ train.",
+        "- Giá trị thiếu trong `store.csv` phản ánh không áp dụng hoặc thông tin chưa biết; không nên mặc nhiên coi là số không.",
         "",
         "## 5. Summary Tables",
         "",
@@ -369,6 +534,18 @@ def run() -> None:
         "### 5.4. Dữ liệu thiếu trong store.csv",
         "",
         _markdown(pd.DataFrame({"Field": missing.index.astype(str), "MissingRows": missing.values.astype(int)}), index=False),
+        "",
+        "### 5.5. Trạng thái mở cửa",
+        "",
+        _markdown(open_effect.round(2), index=False),
+        "",
+        "### 5.6. StateHoliday",
+        "",
+        _markdown(state_holiday_effect.round(2), index=False),
+        "",
+        "### 5.7. Tất cả dữ liệu thiếu trong raw",
+        "",
+        _markdown(missing_raw_table.assign(MissingRate=(missing_raw_table["MissingRate"] * 100).round(3)), index=False),
         "",
         "## 6. Recommended Next Steps",
         "",
