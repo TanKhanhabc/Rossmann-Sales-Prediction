@@ -39,6 +39,16 @@ def get_weather() -> pd.DataFrame:
 
 
 @lru_cache(maxsize=1)
+def get_state_names() -> pd.DataFrame:
+    return pd.read_csv(require_csv("state_names.csv", EXTERNAL_PROCESSED_DIR))
+
+
+@lru_cache(maxsize=1)
+def get_store_states() -> pd.DataFrame:
+    return pd.read_csv(require_csv("store_states.csv", EXTERNAL_PROCESSED_DIR))
+
+
+@lru_cache(maxsize=1)
 def get_train() -> pd.DataFrame:
     return pd.read_csv(
         require_csv("train_merged.csv", MERGED_DIR), parse_dates=["Date"], low_memory=False
@@ -105,6 +115,8 @@ def data_profile() -> dict:
                   "missing": {k: int(v) for k, v in get_stores().isna().sum().items() if v}},
         "weather": {"rows": len(get_weather()), "columns": list(get_weather().columns),
                     "imputed_measurements": int(get_weather()["WeatherMissingCount"].sum())},
+        "state_names": {"rows": len(get_state_names()), "columns": list(get_state_names().columns)},
+        "store_states": {"rows": len(get_store_states()), "columns": list(get_store_states().columns)},
         "notes": ["Sales only exists in train data and is never a prediction feature.",
                   "Missing test Open values are estimated from day of week during data preparation.",
                   "Missing CompetitionDistance values are represented by -1 and flagged.",

@@ -45,6 +45,8 @@ export type DataProfile = {
   test: {rows:number; columns:string[]; missing_open_original:number};
   store: {rows:number; columns:string[]; missing:{[key:string]:number}};
   weather: {rows:number; columns:string[]; imputed_measurements:number};
+  state_names: {rows:number; columns:string[]};
+  store_states: {rows:number; columns:string[]};
   notes:string[];
 };
 export type PredictInput = {store: number; date: string; promo: number; open: number; state_holiday: string; school_holiday: number};
