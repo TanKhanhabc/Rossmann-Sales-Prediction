@@ -373,7 +373,6 @@ h1 { margin-bottom: 7px; color: #21364a; font-family: Manrope, sans-serif; font-
 .dataset-footer a { display: flex; align-items: center; gap: 7px; color: #0d8d6e; font-size: 12px; font-weight: 800; white-space: nowrap; }
 .comparison-panel { padding: 22px 23px 16px; margin-bottom: 18px; }
 .comparison-header { align-items: center; }
-.winner-chip { display: flex; align-items: center; gap: 7px; padding: 8px 11px; color: #08745b; background: #e8f8f1; border: 1px solid #d1eee1; border-radius: 30px; font-size: 12px; font-weight: 800; white-space: nowrap; }
 .comparison-layout { display: grid; grid-template-columns: 38% 62%; gap: 18px; }
 .comparison-chart-card { min-width: 0; padding: 12px 12px 8px; background: #f8fafb; border: 1px solid #e9eff0; border-radius: 11px; }
 .comparison-chart-card .view-tabs { margin: 0 0 8px; }
@@ -397,6 +396,33 @@ h1 { margin-bottom: 7px; color: #21364a; font-family: Manrope, sans-serif; font-
 .stage-content { min-height: 270px; }
 .stage-description { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 11px; color: #7d909c; font-size: 11.5px; }
 .stage-description strong { color: #3e5667; font-size: 12.5px; }
+.experiment-explanation { margin-top: 16px; overflow: hidden; border: 1px solid #e7edef; border-radius: 11px; }
+.experiment-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-bottom: 1px solid #edf1f2; background: #f8fafb; }
+.experiment-tabs button { display: flex; align-items: center; gap: 8px; min-width: 0; min-height: 54px; padding: 9px 12px; color: #71848f; background: transparent; border: 0; border-right: 1px solid #edf1f2; text-align: left; font-size: 11.5px; font-weight: 700; }
+.experiment-tabs button:last-child { border-right: 0; }
+.experiment-tabs button span { display: grid; flex: 0 0 auto; width: 32px; height: 32px; place-items: center; color: #7a8d96; background: #edf2f3; border-radius: 8px; font-size: 9.5px; }
+.experiment-tabs button.active { color: #246b58; background: #eef9f4; box-shadow: inset 0 -2px #20aa84; }
+.experiment-tabs button.active span { color: #fff; background: #159a78; }
+.experiment-tab-content { padding: 16px; }
+.experiment-brief { display: flex; align-items: center; gap: 11px; margin-bottom: 12px; }
+.experiment-number { display: grid; flex: 0 0 auto; width: 42px; height: 42px; place-items: center; color: #08745b; background: #daf3e9; border-radius: 10px; font-size: 11px; font-weight: 800; }
+.experiment-brief h3 { margin: 0 0 3px; color: #344f60; font-family: Manrope, sans-serif; font-size: 14px; }
+.experiment-brief p { margin: 0; color: #85969f; font-size: 11.5px; }
+.experiment-detail-grid { display: grid; grid-template-columns: 1.2fr 1fr .9fr; gap: 10px; }
+.experiment-detail-card { min-width: 0; padding: 12px; background: #f8fafb; border: 1px solid #edf1f2; border-radius: 9px; }
+.experiment-detail-card h4 { margin: 0 0 8px; color: #607681; font-size: 10.5px; letter-spacing: .35px; }
+.experiment-detail-card ul { margin: 0; padding-left: 16px; color: #6f828d; font-size: 10.5px; line-height: 1.55; }
+.experiment-detail-card li + li { margin-top: 4px; }
+.experiment-detail-card p { margin: 0; color: #6f828d; font-size: 10.5px; line-height: 1.55; }
+.experiment-detail-card p + p { margin-top: 7px; }
+.experiment-result-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.experiment-result-list div { display: grid; grid-template-columns: 1fr auto; align-items: center; padding: 7px 8px; background: #fff; border: 1px solid #edf1f2; border-radius: 7px; }
+.experiment-result-list span { min-width: 0; color: #647986; font-size: 9.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.experiment-result-list strong { color: #405866; font-size: 11px; }
+.experiment-result-list small { grid-column: 1 / -1; margin-top: 2px; color: #a0acb3; font-size: 8.5px; }
+.experiment-result-list .result-winner { background: #f1faf6; border-color: #d1ecdf; }
+.experiment-result-list .result-winner strong { color: #08745b; }
+.observation-card { background: #fbfdfc; }
 .stage-table th, .stage-table td { padding: 13px 10px; }
 .interval-summary { margin-top: 10px; padding: 10px 12px; color: #788d97; background: #f4f9f7; border: 1px solid #e7f0ec; border-radius: 8px; font-size: 11.5px; }
 .interval-summary strong { color: #16836a; }
@@ -411,11 +437,6 @@ h1 { margin-bottom: 7px; color: #21364a; font-family: Manrope, sans-serif; font-
 .experiment-track button.active { background: #eef9f4; border-color: #cce8dc; box-shadow: 0 5px 14px rgba(20,150,113,.07); }
 .experiment-track button.active > span { color: #fff; background: #159a78; }
 .experiment-track button.active strong { color: #246b58; }
-.experiment-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 12px; }
-.experiment-metrics div { display: grid; padding: 10px 12px; background: #f8fafb; border: 1px solid #edf1f2; border-radius: 9px; }
-.experiment-metrics span { color: #9aa8af; font-size: 9px; font-weight: 800; letter-spacing: .7px; }
-.experiment-metrics strong { margin-top: 3px; color: #355163; font-family: Manrope, sans-serif; font-size: 15px; }
-.experiment-metrics small { margin-top: 2px; color: #96a5ac; font-size: 10px; }
 .eligibility { display: inline-block; padding: 4px 7px; color: #7b8d96; background: #f0f3f4; border-radius: 20px; font-size: 9.5px; }
 .eligibility.yes { color: #08745b; background: #daf3e9; }
 .interval-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 0 0 12px; padding: 10px 12px; background: #f4f9f7; border: 1px solid #e7f0ec; border-radius: 9px; }
@@ -515,7 +536,6 @@ footer { display: flex; justify-content: space-between; padding: 19px 0 0; color
   .panel-header p { font-size: 11.5px; }
   .comparison-panel { padding: 16px; }
   .comparison-header { align-items: flex-start; flex-direction: column; }
-  .winner-chip { font-size: 11px; }
   .comparison-chart { height: 220px; }
   .comparison-table { min-width: 560px; }
   .stage-tabs { width: 100%; }
@@ -524,7 +544,6 @@ footer { display: flex; justify-content: space-between; padding: 19px 0 0; color
   .subgroup-grid { grid-template-columns: 1fr; }
   .experiment-track { grid-template-columns: repeat(5, 180px); overflow-x: auto; }
   .experiment-track button { min-width: 180px; }
-  .experiment-metrics, .interval-summary { grid-template-columns: 1fr; }
   .importance-row { grid-template-columns: 26px 112px 1fr 82px; }
   .ai-chip { padding: 6px 8px; font-size: 10px; }
   .forecast-controls { gap: 9px; padding: 11px; }
@@ -549,6 +568,11 @@ footer { display: flex; justify-content: space-between; padding: 19px 0 0; color
   .dataset-grid { grid-template-columns: 1fr; }
   .dataset-footer { align-items: flex-start; flex-direction: column; }
   .dataset-footer a { margin-top: 1px; }
+  .experiment-tabs { grid-template-columns: repeat(4, 150px); overflow-x: auto; }
+  .experiment-tabs button { min-width: 150px; }
+  .experiment-tab-content { padding: 12px; }
+  .experiment-detail-grid { grid-template-columns: 1fr; }
+  .experiment-result-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   footer { display: block; line-height: 1.8; }
   footer span { display: block; }
 }

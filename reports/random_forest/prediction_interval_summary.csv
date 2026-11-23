@@ -1,2 +1,0 @@
-model,residual_oof_rows,residual_p10,residual_p90,validation_empirical_coverage,interval_method
-random_forest,596131,-1585.2170158966646,3169.2917434521087,0.8389280375827461,"additive out-of-fold residual quantiles (P10, P90), clipped at zero"

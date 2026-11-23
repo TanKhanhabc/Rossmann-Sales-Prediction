@@ -1,0 +1,21 @@
+Thực nghiệm,Mô hình,RMSPE,Train Time (s),Inference (ms),Size (MB)
+TN1: Baseline (Dữ liệu gốc),Dummy (Median),0.51291,2.98,53.56,0.004
+TN1: Baseline (Dữ liệu gốc),Ridge,0.44472,2.76,64.86,0.004
+TN1: Baseline (Dữ liệu gốc),Decision Tree,0.34408,5.84,96.69,0.146
+TN1: Baseline (Dữ liệu gốc),Random Forest,0.33276,114.91,339.12,8.283
+TN1: Baseline (Dữ liệu gốc),LightGBM,0.30007,16.6,171.23,0.11
+TN2: Tối ưu Categorical,Dummy (Median),0.51291,3.78,51.87,0.013
+TN2: Tối ưu Categorical,Ridge,0.22396,4.11,56.32,0.013
+TN2: Tối ưu Categorical,Decision Tree,0.19806,7.43,99.77,0.185
+TN2: Tối ưu Categorical,Random Forest,0.18337,121.23,804.54,10.466
+TN2: Tối ưu Categorical,LightGBM,0.15166,15.7,163.27,0.202
+TN3: FE Bán lẻ & Tuning,Dummy (Median),0.51291,5.78,105.25,0.013
+TN3: FE Bán lẻ & Tuning,Ridge,0.22678,6.36,83.02,0.013
+TN3: FE Bán lẻ & Tuning,Decision Tree,0.1544,15.61,191.28,0.481
+TN3: FE Bán lẻ & Tuning,Random Forest,0.14053,347.36,529.46,54.291
+TN3: FE Bán lẻ & Tuning,LightGBM,0.1159,194.35,9059.57,4.765
+TN4: Post-processing (RMSPE),Dummy (Median),0.49965,5.78,0.0,0.013
+TN4: Post-processing (RMSPE),Ridge,0.21837,6.36,0.0,0.013
+TN4: Post-processing (RMSPE),Decision Tree,0.15335,15.61,0.0,0.481
+TN4: Post-processing (RMSPE),Random Forest,0.13993,347.36,0.0,54.291
+TN4: Post-processing (RMSPE),LightGBM,0.11311,194.35,0.0,4.765

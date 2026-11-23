@@ -1,9 +1,0 @@
-{
-  "fit_rows": 804056,
-  "validation_rows": 46830,
-  "validation_dates": [
-    "2015-06-20",
-    "2015-07-31"
-  ],
-  "note": "The 42-day holdout is excluded from fitting; all models use best params from Exp 1."
-}

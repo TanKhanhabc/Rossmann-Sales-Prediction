@@ -38,6 +38,8 @@ export type ModelComparison = {
  missing_files?:string[];
  sources?:{cv:string;holdout:string;selection:string};
 };
+export type ExperimentMetric = {experiment:string;model:string;rmspe:number;train_time:number;inference_ms:number;size_mb:number};
+export type ExperimentComparison = {experiments:string[];models:string[];rows:ExperimentMetric[];source?:string;message?:string;missing_files?:string[]};
 export type DataProfile = {
   train: {rows:number; columns:string[]; missing:{[key:string]:number}};
   test: {rows:number; columns:string[]; missing_open_original:number};
@@ -55,6 +57,7 @@ export const api = {
   testPredictions: (store: number, startDate: string, endDate: string) => request<TestPredictions>(`/test-predictions?store=${store}&start_date=${startDate}&end_date=${endDate}`),
   model: () => request<Model>('/model-info'),
   modelComparison: () => request<ModelComparison>('/model-comparison'),
+  experimentComparison: () => request<ExperimentComparison>('/experiment-comparison'),
   forecast: (store: number, startDate: string, days: number, schedule: ForecastSchedule[]) => request<Forecast>('/forecast', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({store, start_date: startDate, days, schedule})}),
   predict: (data: PredictInput) => request<PredictResult>('/predict', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)}),
 };

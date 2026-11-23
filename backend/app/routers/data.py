@@ -205,3 +205,55 @@ def model_comparison():
             "selection": "reports/selected_model.json",
         },
     }
+
+
+@router.get("/experiment-comparison")
+def experiment_comparison():
+    csv_path = REPORTS_DIR.parent / "results" / "rossmann_4_experiments_metrics.csv"
+    if not csv_path.is_file():
+        return {
+            "experiments": [],
+            "models": [],
+            "rows": [],
+            "message": "Chưa tìm thấy kết quả thực nghiệm mới.",
+            "missing_files": [str(csv_path)],
+        }
+
+    frame = pd.read_csv(csv_path)
+    required = {"Thực nghiệm", "Mô hình", "RMSPE", "Train Time (s)", "Inference (ms)", "Size (MB)"}
+    if not required.issubset(frame.columns):
+        return {
+            "experiments": [],
+            "models": [],
+            "rows": [],
+            "message": "Định dạng file kết quả thực nghiệm không hợp lệ.",
+            "missing_files": [],
+        }
+
+    experiments = [
+        str(value)
+        for value in dict.fromkeys(frame["Thực nghiệm"].fillna("").astype(str).tolist())
+        if value
+    ]
+    models = [
+        str(value)
+        for value in dict.fromkeys(frame["Mô hình"].fillna("").astype(str).tolist())
+        if value
+    ]
+    rows = [
+        {
+            "experiment": str(record["Thực nghiệm"]),
+            "model": str(record["Mô hình"]),
+            "rmspe": round(float(record["RMSPE"]), 5),
+            "train_time": round(float(record["Train Time (s)"]), 2),
+            "inference_ms": round(float(record["Inference (ms)"]), 2),
+            "size_mb": round(float(record["Size (MB)"]), 3),
+        }
+        for record in frame.to_dict("records")
+    ]
+    return {
+        "experiments": experiments,
+        "models": models,
+        "rows": rows,
+        "source": "results/rossmann_4_experiments_metrics.csv",
+    }
