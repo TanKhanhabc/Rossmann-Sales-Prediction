@@ -5,7 +5,13 @@ import pandas as pd
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 from app.model.predict_model import infer
-from app.services.data_service import get_stores, get_test_schedule, get_test_store_ranges
+from app.services.data_service import (
+    get_stores,
+    get_train,
+    get_test,
+    get_test_schedule,
+    get_test_store_ranges,
+)
 
 router = APIRouter(prefix="/api", tags=["Forecast & Prediction"])
 
@@ -53,14 +59,90 @@ def make_predictions(requests: list[PredictRequest]) -> list[dict]:
     for item in requests:
         validate_store(item.store)
     try:
-        values = infer(to_frame(requests))
+        frames = []
+        actual_sales = []
+        conditions_match = []
+        out_of_range = []
+        train = get_train()
+        test = get_test()
+        for item in requests:
+            frame = to_frame([item])
+            timestamp = pd.Timestamp(item.date)
+            if date(2013, 1, 1) <= item.date <= date(2015, 7, 31):
+                out_of_range.append(False)
+                row = train.loc[
+                    train.Store.eq(item.store) & train.Date.eq(timestamp)
+                ]
+                if not row.empty:
+                    original = row.iloc[0]
+                    historical = original.copy()
+                    historical["Promo"] = item.promo
+                    historical["Open"] = item.open
+                    historical["SchoolHoliday"] = item.school_holiday
+                    historical["StateHoliday"] = item.state_holiday
+                    frames.append(pd.DataFrame([historical]))
+                    actual_match = (
+                        int(original.Promo) == item.promo
+                        and int(original.Open) == item.open
+                        and int(original.SchoolHoliday) == item.school_holiday
+                        and str(original.StateHoliday).replace("0.0", "0") == item.state_holiday
+                    )
+                    conditions_match.append(actual_match)
+                    actual_sales.append(
+                        float(original.Sales) if actual_match else None
+                    )
+                else:
+                    frames.append(frame)
+                    conditions_match.append(False)
+                    actual_sales.append(None)
+            else:
+                if date(2015, 8, 1) <= item.date <= date(2015, 9, 17):
+                    row = test.loc[
+                        test.Store.eq(item.store) & test.Date.eq(timestamp)
+                    ]
+                    if not row.empty:
+                        out_of_range.append(False)
+                        historical = row.iloc[0].copy()
+                        historical["Promo"] = item.promo
+                        historical["Open"] = item.open
+                        historical["SchoolHoliday"] = item.school_holiday
+                        historical["StateHoliday"] = item.state_holiday
+                        frames.append(pd.DataFrame([historical]))
+                    else:
+                        out_of_range.append(True)
+                        frames.append(frame)
+                else:
+                    out_of_range.append(True)
+                    frames.append(frame)
+                conditions_match.append(False)
+                actual_sales.append(None)
+
+        frame = pd.concat(frames, ignore_index=True)
+        values = infer(frame)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
-    return [{"store": item.store, "date": item.date.isoformat(),
-             "predicted_sales": round(float(value), 2),
-             "open": item.open, "promo": item.promo,
-             "currency": "EUR"}
-            for item, value in zip(requests, values)]
+    results = []
+    for item, value, actual, match, outside in zip(
+        requests, values, actual_sales, conditions_match, out_of_range
+    ):
+        if item.open == 0:
+            predicted = 0.0
+        else:
+            predicted = float(value)
+        results.append({
+            "store": item.store,
+            "date": item.date.isoformat(),
+            "predicted_sales": round(predicted, 2),
+            "open": item.open,
+            "promo": item.promo,
+            "state_holiday": item.state_holiday,
+            "school_holiday": item.school_holiday,
+            "actual_sales": round(actual, 2) if actual is not None else None,
+            "conditions_match_actual": match,
+            "is_out_of_range": outside,
+            "currency": "EUR",
+        })
+    return results
 
 
 @router.post("/predict")

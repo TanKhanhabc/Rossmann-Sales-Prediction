@@ -6,7 +6,7 @@ const euros = (v: number) => '€' + new Intl.NumberFormat('de-DE', {maximumFrac
 const numeral = (v: number) => new Intl.NumberFormat('en-US').format(v || 0);
 const shortDate = (v: string) => new Date(`${v}T12:00:00`).toLocaleDateString('vi-VN', {day: '2-digit', month: '2-digit'});
 const fmt = (v: number) => new Intl.NumberFormat('vi-VN', {maximumFractionDigits: 2}).format(v);
-const defaultForm: PredictInput = {store: 1, date: '2015-08-03', promo: 1, open: 1, state_holiday: '0', school_holiday: 0};
+const defaultForm: PredictInput = {store: 1, date: '2015-07-31', promo: 1, open: 1, state_holiday: '0', school_holiday: 1};
 const modelDisplayName = (name: string) => ({
   lightgbm: 'LightGBM',
   ridge: 'Ridge',
@@ -205,7 +205,7 @@ export default function App() {
       </div>
       <button className="primary-btn full" type="submit" disabled={predicting}>{predicting?<LoaderCircle size={17} className="spin"/>:<Sparkles size={17}/>} Chạy dự đoán <ArrowRight size={17}/></button>
     </form>
-    {predictResult && <div className="result-box"><span>DOANH THU ƯỚC TÍNH</span><strong>{euros(predictResult.predicted_sales)}</strong><small>Store #{predictResult.store} · {predictResult.date} · EUR</small></div>}
+    {predictResult && <div className="result-box"><span>DOANH THU ƯỚC TÍNH</span><strong>{euros(predictResult.predicted_sales)}</strong><small>Store #{predictResult.store} · {predictResult.date} · EUR</small>{predictResult.actual_sales!==null && predictResult.conditions_match_actual && <small>Doanh thu thực tế: {euros(predictResult.actual_sales)}</small>}{predictResult.is_out_of_range && <small>Dự đoán dựa trên giả định cấu trúc cửa hàng giai đoạn 2013–2015 và thời tiết trung bình theo mùa.</small>}</div>}
     </section>
     <section className="panel model-panel" id="model"><div className="panel-header"><div><div className="heading-top">MODEL PERFORMANCE</div><h2>Đánh giá mô hình</h2><p>Kiểm định theo thời gian, không chia ngẫu nhiên.</p></div><div className="panel-symbol purple"><Activity size={20}/></div></div><div className="model-status"><span className="good-dot"/> {model?.trained?'Mô hình đã được huấn luyện':'Chưa tìm thấy mô hình'} <CheckCircle2 size={16}/></div><div className="model-metrics"><div><span>MAE</span><strong>{model?.validation?euros(model.validation.mae):'—'}</strong><small>Sai số tuyệt đối TB</small></div><div><span>RMSE</span><strong>{model?.validation?euros(model.validation.rmse):'—'}</strong><small>Sai số căn bậc hai TB</small></div><div><span>RMSPE</span><strong>{model?.validation?fmt(model.validation.rmspe):'—'}</strong><small>Đo trên Sales &gt; 0</small></div></div><div className="model-divider"/><div className="validation-notes"><div><Clock3 size={16}/> Tập validation</div><strong>{model?.validation_dates?`${model.validation_dates[0]} → ${model.validation_dates[1]}`:'—'}</strong></div><div className="validation-notes"><div><ShieldCheck size={16}/> So với baseline (MAE)</div><strong>{model?.baseline?euros(model.baseline.mae):'—'}</strong></div><p className="model-caption">Không dùng Sales/Customers làm đầu vào. Khi cửa hàng đóng cửa, dự đoán bằng 0.</p></section></div>
     <section className="panel forecast-section" id="forecast"><div className="panel-header wide"><div><div className="heading-top">DỰ ĐOÁN TRÊN TẬP TEST</div><h2>Doanh thu dự đoán theo ngày</h2><p>LightGBM sử dụng lịch từ test.csv và tự tạo đặc trưng từ dữ liệu cửa hàng, thời tiết.</p></div><span className="ai-chip"><Sparkles size={15}/> AI POWERED</span></div>

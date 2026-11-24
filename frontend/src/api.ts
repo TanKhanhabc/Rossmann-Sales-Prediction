@@ -50,7 +50,19 @@ export type DataProfile = {
   notes:string[];
 };
 export type PredictInput = {store: number; date: string; promo: number; open: number; state_holiday: string; school_holiday: number};
-export type PredictResult = {store:number;date:string;predicted_sales:number;open:number;promo:number;currency:string};
+export type PredictResult = {
+  store:number;
+  date:string;
+  predicted_sales:number;
+  open:number;
+  promo:number;
+  state_holiday:string;
+  school_holiday:number;
+  actual_sales:number|null;
+  conditions_match_actual:boolean;
+  is_out_of_range:boolean;
+  currency:string;
+};
 export const api = {
   summary: () => request<Summary>('/overview'),
   dataProfile: () => request<DataProfile>('/data-profile'),

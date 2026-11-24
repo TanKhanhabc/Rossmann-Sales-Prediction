@@ -75,6 +75,133 @@ def test_history_endpoint_is_removed():
 def test_predict_batch_endpoint_is_removed():
     assert client.post("/api/predict-batch", json=[]).status_code == 404
 
+def test_predict_historical_row_overrides_conditions_and_returns_matching_actual(monkeypatch):
+    train = pd.DataFrame([
+        {
+            "Store": 1,
+            "Date": pd.Timestamp("2015-07-31"),
+            "Sales": 4321,
+            "Promo": 0,
+            "Open": 1,
+            "SchoolHoliday": 1,
+            "StateHoliday": "0",
+            "Mean_TemperatureC": 20.0,
+        }
+    ])
+    model_input = {}
+
+    def fake_infer(frame):
+        model_input["frame"] = frame
+        return np.array([100.0])
+
+    monkeypatch.setattr(predictions, "get_train", lambda: train)
+    monkeypatch.setattr(predictions, "get_stores", lambda: pd.DataFrame({"Store": [1]}))
+    monkeypatch.setattr(predictions, "infer", fake_infer)
+
+    actual = client.post("/api/predict", json={
+        "store": 1,
+        "date": "2015-07-31",
+        "promo": 0,
+        "open": 1,
+        "school_holiday": 1,
+        "state_holiday": "0",
+    })
+    changed = client.post("/api/predict", json={
+        "store": 1,
+        "date": "2015-07-31",
+        "promo": 1,
+        "open": 1,
+        "school_holiday": 0,
+        "state_holiday": "a",
+    })
+
+    assert actual.status_code == 200
+    assert actual.json()["actual_sales"] == 4321
+    assert actual.json()["conditions_match_actual"] is True
+    assert changed.status_code == 200
+    assert changed.json()["actual_sales"] is None
+    assert changed.json()["conditions_match_actual"] is False
+    assert model_input["frame"].iloc[-1][
+        ["Promo", "Open", "SchoolHoliday", "StateHoliday"]
+    ].to_dict() == {
+        "Promo": 1,
+        "Open": 1,
+        "SchoolHoliday": 0,
+        "StateHoliday": "a",
+    }
+
+
+def test_predict_test_row_overrides_conditions_and_never_returns_actual(monkeypatch):
+    test = pd.DataFrame([
+        {
+            "Store": 1,
+            "Date": pd.Timestamp("2015-08-03"),
+            "Promo": 0,
+            "Open": 1,
+            "SchoolHoliday": 1,
+            "StateHoliday": "0",
+            "Mean_TemperatureC": 22.0,
+        }
+    ])
+    model_input = {}
+
+    def fake_infer(frame):
+        model_input["frame"] = frame
+        return np.array([250.0])
+
+    monkeypatch.setattr(predictions, "get_train", lambda: pd.DataFrame())
+    monkeypatch.setattr(predictions, "get_test", lambda: test)
+    monkeypatch.setattr(predictions, "get_stores", lambda: pd.DataFrame({"Store": [1]}))
+    monkeypatch.setattr(predictions, "infer", fake_infer)
+
+    response = client.post("/api/predict", json={
+        "store": 1,
+        "date": "2015-08-03",
+        "promo": 1,
+        "open": 1,
+        "school_holiday": 0,
+        "state_holiday": "a",
+    })
+
+    assert response.status_code == 200
+    assert response.json()["actual_sales"] is None
+    assert response.json()["conditions_match_actual"] is False
+    assert model_input["frame"].iloc[0][
+        ["Promo", "Open", "SchoolHoliday", "StateHoliday"]
+    ].to_dict() == {
+        "Promo": 1,
+        "Open": 1,
+        "SchoolHoliday": 0,
+        "StateHoliday": "a",
+    }
+
+
+def test_predict_out_of_range_marks_assumption(monkeypatch):
+    model_input = {}
+
+    def fake_infer(frame):
+        model_input["frame"] = frame
+        return np.array([300.0])
+
+    monkeypatch.setattr(predictions, "get_train", lambda: pd.DataFrame())
+    monkeypatch.setattr(predictions, "get_test", lambda: pd.DataFrame())
+    monkeypatch.setattr(predictions, "get_stores", lambda: pd.DataFrame({"Store": [1]}))
+    monkeypatch.setattr(predictions, "infer", fake_infer)
+
+    response = client.post("/api/predict", json={
+        "store": 1,
+        "date": "2026-01-15",
+        "promo": 1,
+        "open": 1,
+        "school_holiday": 0,
+        "state_holiday": "0",
+    })
+
+    assert response.status_code == 200
+    assert response.json()["is_out_of_range"] is True
+    assert response.json()["actual_sales"] is None
+    assert model_input["frame"].iloc[0]["Date"] == pd.Timestamp("2026-01-15")
+
 
 def test_submission_endpoint_is_removed():
     assert client.get("/api/submission").status_code == 404
@@ -278,7 +405,7 @@ def test_forecast_post_prefers_user_schedule_and_defaults_unconfigured_days(monk
 
     assert response.status_code == 200, response.text
     result = response.json()
-    assert result["total_predicted_sales"] == 4
+    assert result["total_predicted_sales"] == 1
     assert result["user_schedule_days"] == 2
     assert result["known_schedule_days"] == 3
     assert result["assumed_schedule_days"] == 1

@@ -45,7 +45,13 @@ def _historical_weather_average(
     target_date: pd.Timestamp,
 ) -> pd.Series:
     history = weather.loc[weather["Date"].lt(target_date)]
-    state_history = history.loc[history["State"].eq(state)]
+    climate_history = history if not history.empty else weather
+    target_week = target_date.isocalendar().week
+    state_history = climate_history.loc[climate_history["State"].eq(state)]
+    same_week = state_history.loc[
+        state_history["Date"].dt.isocalendar().week.eq(target_week)
+    ]
+    state_history = climate_history.loc[climate_history["State"].eq(state)]
     same_day = state_history.loc[
         state_history["Date"].dt.month.eq(target_date.month)
         & state_history["Date"].dt.day.eq(target_date.day)
@@ -53,7 +59,7 @@ def _historical_weather_average(
     same_month = state_history.loc[state_history["Date"].dt.month.eq(target_date.month)]
 
     average = pd.Series(np.nan, index=WEATHER_CLIMATE_COLUMNS, dtype=float)
-    for observations in (same_day, same_month, history):
+    for observations in (same_week, same_month, climate_history):
         average = average.fillna(observations[WEATHER_CLIMATE_COLUMNS].mean())
 
     missing_measurements = [
@@ -165,7 +171,9 @@ def make_features(
     p2 = df["Promo2"].astype("int8")
     df["Promo2"] = p2
     df["Promo2Active"] = (p2.eq(1) & weeks.ge(0)).astype("int8")
+    promo2_before_start = p2.eq(1) & weeks.lt(0)
     df["Promo2WeeksElapsed"] = weeks.where(p2.eq(1) & weeks.ge(0), -1).fillna(-1)
+    df.loc[promo2_before_start, "Promo2WeeksElapsed"] = 0
     month_abbr = df["Month"].map(dict(enumerate(calendar.month_abbr)))
     interval = df["PromoInterval"].astype(str)
     unique = interval.unique()
