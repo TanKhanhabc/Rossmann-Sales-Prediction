@@ -1,4 +1,4 @@
-const PREFIX = '/api';
+const PREFIX = `${import.meta.env.VITE_API_URL || ''}/api`;
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(PREFIX + url, init);
   if (!res.ok) { const body = await res.json().catch(() => ({})); throw new Error(body.detail ?? `HTTP ${res.status}`); }
