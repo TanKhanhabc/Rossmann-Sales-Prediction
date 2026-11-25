@@ -6,8 +6,10 @@ RUN apt-get update \
 COPY backend/requirements.txt backend/requirements.txt
 RUN pip install --no-cache-dir --only-binary=:all: -r backend/requirements.txt
 COPY backend/ backend/
-COPY data/processed/ data/processed/
-COPY data/merged/ data/merged/
+COPY scripts/ scripts/
+COPY data/raw/ data/raw/
+COPY data/external/ data/external/
+RUN python scripts/preprocessing/prepare_data.py
 COPY models/ models/
 COPY results/ results/
 WORKDIR /workspace/backend

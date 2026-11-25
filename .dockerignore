@@ -9,6 +9,4 @@ logs/*
 notebooks/*
 temp_models_full/*
 _tmp_img/*
-data/raw/*
-data/external/*
 results/eda_charts/*
