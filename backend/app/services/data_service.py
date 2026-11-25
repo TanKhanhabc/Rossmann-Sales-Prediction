@@ -54,6 +54,15 @@ def get_train() -> pd.DataFrame:
         require_csv("train_merged.csv", MERGED_DIR), parse_dates=["Date"], low_memory=False
     )
 
+@lru_cache(maxsize=1)
+def get_train_summary() -> pd.DataFrame:
+    return pd.read_csv(
+        require_csv("train_merged.csv", MERGED_DIR),
+        usecols=["Date", "Store", "Sales", "Open"],
+        parse_dates=["Date"],
+        low_memory=False,
+    )
+
 
 @lru_cache(maxsize=1)
 def get_test() -> pd.DataFrame:
@@ -83,7 +92,7 @@ def get_preprocessing_report() -> dict:
 
 @lru_cache(maxsize=1)
 def overview() -> dict:
-    df = get_train()
+    df = get_train_summary()
     stores = get_stores()
     daily = df.groupby("Date", sort=True)["Sales"].sum()
     top = df.groupby("Store", sort=False)["Sales"].sum().nlargest(8)
@@ -106,15 +115,31 @@ def overview() -> dict:
 
 
 def data_profile() -> dict:
+    train_path = require_csv("train_merged.csv", MERGED_DIR)
+    test_path = require_csv("test_merged.csv", MERGED_DIR)
+    report = get_preprocessing_report()
+    train_columns = list(pd.read_csv(train_path, nrows=0).columns)
+    test_columns = list(pd.read_csv(test_path, nrows=0).columns)
+    missing = pd.Series(dtype="int64")
+    for chunk in pd.read_csv(train_path, chunksize=100_000, low_memory=False):
+        chunk_missing = chunk.isna().sum()
+        missing = missing.add(chunk_missing, fill_value=0)
+
     return {
-        "train": {"rows": len(get_train()), "columns": list(get_train().columns),
-                  "missing": {k: int(v) for k, v in get_train().isna().sum().items() if v}},
-        "test": {"rows": len(get_test()), "columns": list(get_test().columns),
-                 "missing_open_original": get_preprocessing_report()["missing_test_open_original"]},
+        "train": {"rows": int(report["train_rows"]), "columns": train_columns,
+                 "missing": {k: int(v) for k, v in missing.items() if v}},
+        "test": {"rows": int(report["test_rows"]), "columns": test_columns,
+                 "missing_open_original": report["missing_test_open_original"]},
         "store": {"rows": len(get_stores()), "columns": list(get_stores().columns),
                   "missing": {k: int(v) for k, v in get_stores().isna().sum().items() if v}},
-        "weather": {"rows": len(get_weather()), "columns": list(get_weather().columns),
-                    "imputed_measurements": int(get_weather()["WeatherMissingCount"].sum())},
+        "weather": {
+            "rows": int(report["weather_rows"]),
+            "columns": list(pd.read_csv(
+                require_csv("weather.csv", EXTERNAL_PROCESSED_DIR),
+                nrows=0,
+            ).columns),
+            "imputed_measurements": int(report["weather_missing_values_imputed"]),
+        },
         "state_names": {"rows": len(get_state_names()), "columns": list(get_state_names().columns)},
         "store_states": {"rows": len(get_store_states()), "columns": list(get_store_states().columns)},
         "notes": ["Sales only exists in train data and is never a prediction feature.",

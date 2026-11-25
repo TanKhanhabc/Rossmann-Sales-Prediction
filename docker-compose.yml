@@ -3,6 +3,9 @@ services:
     build: {context: ., dockerfile: backend/Dockerfile}
     ports: ["8000:8000"]
     restart: unless-stopped
+    cpus: 2
+    mem_limit: 2300m
+    mem_reservation: 1024m
     volumes:
       - ./models:/workspace/models:ro
       - ./results:/workspace/results:ro
@@ -16,6 +19,9 @@ services:
     build: {context: ., dockerfile: frontend/Dockerfile}
     ports: ["5173:80"]
     restart: unless-stopped
+    cpus: 1
+    mem_limit: 256m
+    mem_reservation: 64m
     depends_on:
       backend:
         condition: service_healthy
