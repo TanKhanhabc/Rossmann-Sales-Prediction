@@ -2,14 +2,20 @@
 from __future__ import annotations
 
 from functools import lru_cache
+from threading import Lock
+from typing import TYPE_CHECKING
 
 import joblib
 import numpy as np
 import pandas as pd
-from lightgbm import LGBMRegressor
 
 from app.model.features import WEATHER_FEATURES, make_features
 from app.services.data_service import MODEL_FILE, get_stores, get_weather
+
+if TYPE_CHECKING:
+    from lightgbm import LGBMRegressor
+
+_INFERENCE_LOCK = Lock()
 
 
 def predict_frame(model: LGBMRegressor, df: pd.DataFrame, store_df: pd.DataFrame) -> np.ndarray:
@@ -28,4 +34,5 @@ def load_model() -> dict:
 
 
 def infer(df: pd.DataFrame) -> np.ndarray:
-    return predict_frame(load_model()["model"], df, get_stores())
+    with _INFERENCE_LOCK:
+        return predict_frame(load_model()["model"], df, get_stores())

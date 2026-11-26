@@ -17,6 +17,11 @@ def test_health_overview_and_stores():
     x = client.get("/api/overview").json()
     assert x["train_rows"] == 1017209
     assert x["test_rows"] == 41088
+    assert x["total_sales"] == 5873180623
+    assert x["mean_sales_open"] == 6955.51
+    assert x["open_days_records"] == 844392
+    assert x["daily_average_revenue"] == 6234798.96
+    assert x["top_stores"][0] == {"store": 262, "sales": 19516842}
     assert len(client.get("/api/stores").json()) == 1115
 
 
@@ -94,7 +99,7 @@ def test_predict_historical_row_overrides_conditions_and_returns_matching_actual
         model_input["frame"] = frame
         return np.array([100.0])
 
-    monkeypatch.setattr(predictions, "get_train", lambda: train)
+    monkeypatch.setattr(predictions, "get_train_for_store", lambda store: train)
     monkeypatch.setattr(predictions, "get_stores", lambda: pd.DataFrame({"Store": [1]}))
     monkeypatch.setattr(predictions, "infer", fake_infer)
 
@@ -149,8 +154,8 @@ def test_predict_test_row_overrides_conditions_and_never_returns_actual(monkeypa
         model_input["frame"] = frame
         return np.array([250.0])
 
-    monkeypatch.setattr(predictions, "get_train", lambda: pd.DataFrame())
-    monkeypatch.setattr(predictions, "get_test", lambda: test)
+    monkeypatch.setattr(predictions, "get_train_for_store", lambda store: pd.DataFrame())
+    monkeypatch.setattr(predictions, "get_test_for_store", lambda store: test)
     monkeypatch.setattr(predictions, "get_stores", lambda: pd.DataFrame({"Store": [1]}))
     monkeypatch.setattr(predictions, "infer", fake_infer)
 
@@ -183,8 +188,6 @@ def test_predict_out_of_range_marks_assumption(monkeypatch):
         model_input["frame"] = frame
         return np.array([300.0])
 
-    monkeypatch.setattr(predictions, "get_train", lambda: pd.DataFrame())
-    monkeypatch.setattr(predictions, "get_test", lambda: pd.DataFrame())
     monkeypatch.setattr(predictions, "get_stores", lambda: pd.DataFrame({"Store": [1]}))
     monkeypatch.setattr(predictions, "infer", fake_infer)
 

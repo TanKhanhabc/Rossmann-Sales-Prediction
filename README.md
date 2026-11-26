@@ -111,6 +111,7 @@ docker compose up --build
 - API: http://localhost:8000/docs
 
 Dockerfiles đã được cung cấp và kiểm tra cú pháp; nếu chưa có Docker Engine hoặc không chạy Docker trên máy thì hãy chạy Python/Node như phần 2.
+Backend chạy với **một Uvicorn worker**; Docker Compose giới hạn backend ở **512 MB**. Các dự đoán chỉ đọc theo lô những cột cần thiết và giữ dữ liệu của tối đa 8 cửa hàng trong cache; quá trình suy luận được tuần tự hóa để hạn chế RAM khi có nhiều yêu cầu cùng lúc.
 
 ## 5. Ý nghĩa màn hình
 - **Tổng quan**: doanh thu thực trong train, số cửa hàng và số bản ghi.

@@ -4,8 +4,8 @@ services:
     ports: ["8000:8000"]
     restart: unless-stopped
     cpus: 2
-    mem_limit: 2300m
-    mem_reservation: 1024m
+    mem_limit: 512m
+    mem_reservation: 350m
     volumes:
       - ./models:/workspace/models:ro
       - ./results:/workspace/results:ro

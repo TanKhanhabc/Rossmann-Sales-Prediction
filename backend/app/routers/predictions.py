@@ -7,8 +7,8 @@ from pydantic import BaseModel, Field
 from app.model.predict_model import infer
 from app.services.data_service import (
     get_stores,
-    get_train,
-    get_test,
+    get_train_for_store,
+    get_test_for_store,
     get_test_schedule,
     get_test_store_ranges,
 )
@@ -63,15 +63,30 @@ def make_predictions(requests: list[PredictRequest]) -> list[dict]:
         actual_sales = []
         conditions_match = []
         out_of_range = []
-        train = get_train()
-        test = get_test()
+        historical_stores = {
+            item.store
+            for item in requests
+            if date(2013, 1, 1) <= item.date <= date(2015, 7, 31)
+        }
+        test_stores = {
+            item.store
+            for item in requests
+            if date(2015, 8, 1) <= item.date <= date(2015, 9, 17)
+        }
+        train_by_store = {
+            store: get_train_for_store(store) for store in historical_stores
+        }
+        test_by_store = {
+            store: get_test_for_store(store) for store in test_stores
+        }
         for item in requests:
             frame = to_frame([item])
             timestamp = pd.Timestamp(item.date)
             if date(2013, 1, 1) <= item.date <= date(2015, 7, 31):
                 out_of_range.append(False)
+                train = train_by_store[item.store]
                 row = train.loc[
-                    train.Store.eq(item.store) & train.Date.eq(timestamp)
+                    train.Date.eq(timestamp)
                 ]
                 if not row.empty:
                     original = row.iloc[0]
@@ -97,8 +112,9 @@ def make_predictions(requests: list[PredictRequest]) -> list[dict]:
                     actual_sales.append(None)
             else:
                 if date(2015, 8, 1) <= item.date <= date(2015, 9, 17):
+                    test = test_by_store[item.store]
                     row = test.loc[
-                        test.Store.eq(item.store) & test.Date.eq(timestamp)
+                        test.Date.eq(timestamp)
                     ]
                     if not row.empty:
                         out_of_range.append(False)
