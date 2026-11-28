@@ -13,8 +13,6 @@ Swagger: `http://127.0.0.1:8000/docs`
 | GET | `/api/model-info` | Metrics từ holdout thực |
 | POST | `/api/predict` | Dự đoán 1 cửa hàng 1 ngày |
 | GET | `/api/test-predictions?store=1&start_date=2015-08-01&end_date=2015-08-31` | Dự đoán theo ngày trên các dòng `test.csv` trong khoảng ngày |
-| GET | `/api/forecast?store=1&start_date=2015-08-01&days=14` | Dự báo nhiều ngày theo lịch mặc định |
-| POST | `/api/forecast` | Dự báo nhiều ngày theo lịch từng ngày do người dùng cấu hình |
 
 `GET /api/test-stores` trả cửa hàng có bản ghi trong `test.csv`, kèm `start_date` và `end_date` lấy riêng theo từng cửa hàng. `GET /api/test-predictions` yêu cầu `store`, `start_date` và `end_date`; hai ngày được tính bao gồm cả hai đầu mút và phải nằm trong phạm vi của cửa hàng đó theo `test.csv`. API lọc các dòng tương ứng trong file, tự tạo đặc trưng cửa hàng/thời gian/thời tiết bằng pipeline của mô hình đã huấn luyện, rồi trả `predicted_sales` theo ngày và tổng dự đoán. Không cần gửi đặc trưng trong request.
 
@@ -43,18 +41,5 @@ Response:
 {"store":1,"date":"2015-08-03","predicted_sales":5500.0,"open":1,"promo":1,"currency":"EUR"}
 ```
 Con số 5500.0 ở trên chỉ minh họa dạng dữ liệu, không phải kết quả đo.
-
-POST `/api/forecast` nhận một lịch tùy chọn theo ngày; lịch người dùng ghi đè các giá trị trong test.csv. Mỗi mục lịch cần có `date`, `promo`, `open`, `school_holiday` và `state_holiday`:
-```json
-{
-  "store": 1,
-  "start_date": "2015-08-01",
-  "days": 2,
-  "schedule": [
-    {"date":"2015-08-01","promo":1,"open":1,"school_holiday":0,"state_holiday":"0"}
-  ]
-}
-```
-Ngày chưa cấu hình vẫn dùng lịch test.csv nếu có; nếu không có thì mặc định mở từ thứ Hai đến thứ Bảy, đóng Chủ nhật, không khuyến mãi và không có ngày lễ. Response trả tổng doanh thu dự báo, `user_schedule_days` và `schedule_source` cho từng ngày (`user`, `test.csv` hoặc `assumption`). Đây là **dự đoán theo kịch bản**, không phải lịch khuyến mãi tương lai được xác minh.
 
 `/api/actual-sales`: trả về các ngày có bản ghi trong `train` ở khoảng ngày bao gồm cả hai đầu mút. Có thể bỏ `start_date`/`end_date` để dùng toàn bộ thời gian của `train`. API không gọi mô hình dự đoán và không tạo điểm cho ngày không có bản ghi trong `train`.
