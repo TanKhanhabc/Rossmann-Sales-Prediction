@@ -73,6 +73,10 @@ def test_experiment_comparison_reads_latest_4x5_results():
     assert lightgbm_final["rmspe"] == 0.11311
 
 
+def test_unused_model_comparison_endpoint_is_removed():
+    assert client.get("/api/model-comparison").status_code == 404
+
+
 def test_history_endpoint_is_removed():
     assert client.get("/api/history?store=1&days=5").status_code == 404
 
