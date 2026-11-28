@@ -158,8 +158,10 @@ def run_all_experiments(train_df: pd.DataFrame, val_df: pd.DataFrame):
         score = compute_rmspe(y_val_raw, preds_raw)
 
         # Lưu tạm để đo dung lượng file
-        fname = f"{exp_label[:4]}_{model_name.replace(' ', '_')}.joblib"
-        fpath = os.path.join(TEMP_MODEL_DIR, fname)
+        experiment_dir = TEMP_MODEL_DIR / exp_label[:4].replace(":", "")
+        experiment_dir.mkdir(parents=True, exist_ok=True)
+        fname = f"{model_name.replace(' ', '_')}.joblib"
+        fpath = experiment_dir / fname
         joblib.dump(model_obj, fpath, compress=3)
         size_mb = os.path.getsize(fpath) / (1024 * 1024)
 
